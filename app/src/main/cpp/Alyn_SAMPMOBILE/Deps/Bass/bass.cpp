@@ -40,50 +40,76 @@ int (*BASS_ChannelSet3DAttributes) (uint32_t, int, float, float, int, int, float
 int (*BASS_ChannelSet3DPosition) (uint32_t, const BASS_3DVECTOR*, const BASS_3DVECTOR*, const BASS_3DVECTOR*);
 int (*BASS_SetVolume) (float);
 
-void LoadBassLibrary()
+bool LoadBassLibrary()
 {
 	spdlog::info("Loading BASS library..");
-    void* v0 = dlopen("libBASS.so", RTLD_LAZY);
+	void* v0 = dlopen("libbass.so", RTLD_NOW | RTLD_LOCAL);
 
 	if (!v0) {
-		spdlog::info(dlerror());
-		return;
+		const char* error = dlerror();
+		spdlog::error("Failed to load libbass.so: {}", error ? error : "unknown linker error");
+		return false;
 	}
 
-	BASS_Init = (int (*)(uint32_t, uint32_t, uint32_t))dlsym(v0, "BASS_Init");
-	BASS_Free = (int (*)(void))dlsym(v0, "BASS_Free");
-	BASS_SetConfigPtr = (int (*)(uint32_t, const char*))dlsym(v0, "BASS_SetConfigPtr");
-	BASS_SetConfig = (int (*)(uint32_t, uint32_t))dlsym(v0, "BASS_SetConfig");
-	BASS_ChannelStop = (int (*)(uint32_t))dlsym(v0, "BASS_ChannelStop");
-	BASS_StreamCreateURL = (int (*)(char*, uint32_t, uint32_t, uint32_t))dlsym(v0, "BASS_StreamCreateURL");
-	BASS_StreamCreate = (int (*)(uint32_t, uint32_t, uint32_t, STREAMPROC*, void*))dlsym(v0, "BASS_StreamCreate");
-	BASS_ChannelPlay = (int (*)(uint32_t, bool))dlsym(v0, "BASS_ChannelPlay");
-	BASS_ChannelPause = (int (*)(uint32_t))dlsym(v0, "BASS_ChannelPause");
-	BASS_ChannelGetTags = (int*)dlsym(v0, "BASS_ChannelGetTags");
-	BASS_ChannelSetSync = (int*)dlsym(v0, "BASS_ChannelSetSync");
-	BASS_StreamGetFilePosition = (int*)dlsym(v0, "BASS_StreamGetFilePosition");
-	BASS_StreamFree = (int (*)(uint32_t))dlsym(v0, "BASS_StreamFree");
-	BASS_ErrorGetCode = (int (*)(void))dlsym(v0, "BASS_ErrorGetCode");
-	BASS_Set3DFactors = (int (*)(float, float, float))dlsym(v0, "BASS_Set3DFactors");
-	BASS_Set3DPosition = (int (*)(const BASS_3DVECTOR*, const BASS_3DVECTOR*, const BASS_3DVECTOR*, const BASS_3DVECTOR*))dlsym(v0, "BASS_Set3DPosition");
-	BASS_Apply3D = (int (*)(void))dlsym(v0, "BASS_Apply3D");
-	BASS_ChannelSetFX = (int (*)(uint32_t, HFX))dlsym(v0, "BASS_ChannelSetFX");
-	BASS_ChannelRemoveFX = (int (*)(uint32_t, HFX))dlsym(v0, "BASS_ChannelRemoveFX");
-	BASS_FXSetParameters = (int (*)(HFX, const void*))dlsym(v0, "BASS_FXSetParameters");
-	BASS_IsStarted = (int (*)(void))dlsym(v0, "BASS_IsStarted");
-	BASS_RecordGetDeviceInfo = (int (*)(uint32_t, BASS_DEVICEINFO*))dlsym(v0, "BASS_RecordGetDeviceInfo");
-	BASS_RecordInit = (int (*)(int))dlsym(v0, "BASS_RecordInit");
-	BASS_RecordGetDevice = (int (*)(void))dlsym(v0, "BASS_RecordGetDevice");
-	BASS_RecordFree = (int (*)(void))dlsym(v0, "BASS_RecordFree");
-	BASS_RecordStart = (int (*)(uint32_t, uint32_t, uint32_t, RECORDPROC*, void*))dlsym(v0, "BASS_RecordStart");
-	BASS_ChannelSetAttribute = (int (*)(uint32_t, uint32_t, float))dlsym(v0, "BASS_ChannelSetAttribute");
-	BASS_ChannelGetData = (int (*)(uint32_t, void*, uint32_t))dlsym(v0, "BASS_ChannelGetData");
-	BASS_RecordSetInput = (int (*)(int, uint32_t, float))dlsym(v0, "BASS_RecordSetInput");
-	BASS_StreamPutData = (int (*)(uint32_t, const void*, uint32_t))dlsym(v0, "BASS_StreamPutData");
-	BASS_ChannelSetPosition = (int (*)(uint32_t, uint64_t, uint32_t))dlsym(v0, "BASS_ChannelSetPosition");
-	BASS_ChannelIsActive = (int (*)(uint32_t))dlsym(v0, "BASS_ChannelIsActive");
-	BASS_ChannelSlideAttribute = (int (*)(uint32_t, uint32_t, float, uint32_t))dlsym(v0, "BASS_ChannelSlideAttribute");
-	BASS_ChannelSet3DAttributes = (int (*)(uint32_t, int, float, float, int, int, float))dlsym(v0, "BASS_ChannelSet3DAttributes");
-	BASS_ChannelSet3DPosition = (int (*)(uint32_t, const BASS_3DVECTOR*, const BASS_3DVECTOR*, const BASS_3DVECTOR*))dlsym(v0, "BASS_ChannelSet3DPosition");
-	BASS_SetVolume = (int (*)(float))dlsym(v0, "BASS_SetVolume");
+#define LOAD_BASS_SYMBOL(symbol) \
+	symbol = reinterpret_cast<decltype(symbol)>(dlsym(v0, #symbol))
+
+	LOAD_BASS_SYMBOL(BASS_Init);
+	LOAD_BASS_SYMBOL(BASS_Free);
+	LOAD_BASS_SYMBOL(BASS_SetConfigPtr);
+	LOAD_BASS_SYMBOL(BASS_SetConfig);
+	LOAD_BASS_SYMBOL(BASS_ChannelStop);
+	LOAD_BASS_SYMBOL(BASS_StreamCreateURL);
+	LOAD_BASS_SYMBOL(BASS_StreamCreate);
+	LOAD_BASS_SYMBOL(BASS_ChannelPlay);
+	LOAD_BASS_SYMBOL(BASS_ChannelPause);
+	LOAD_BASS_SYMBOL(BASS_ChannelGetTags);
+	LOAD_BASS_SYMBOL(BASS_ChannelSetSync);
+	LOAD_BASS_SYMBOL(BASS_StreamGetFilePosition);
+	LOAD_BASS_SYMBOL(BASS_StreamFree);
+	LOAD_BASS_SYMBOL(BASS_ErrorGetCode);
+	LOAD_BASS_SYMBOL(BASS_Set3DFactors);
+	LOAD_BASS_SYMBOL(BASS_Set3DPosition);
+	LOAD_BASS_SYMBOL(BASS_Apply3D);
+	LOAD_BASS_SYMBOL(BASS_ChannelSetFX);
+	LOAD_BASS_SYMBOL(BASS_ChannelRemoveFX);
+	LOAD_BASS_SYMBOL(BASS_FXSetParameters);
+	LOAD_BASS_SYMBOL(BASS_IsStarted);
+	LOAD_BASS_SYMBOL(BASS_RecordGetDeviceInfo);
+	LOAD_BASS_SYMBOL(BASS_RecordInit);
+	LOAD_BASS_SYMBOL(BASS_RecordGetDevice);
+	LOAD_BASS_SYMBOL(BASS_RecordFree);
+	LOAD_BASS_SYMBOL(BASS_RecordStart);
+	LOAD_BASS_SYMBOL(BASS_ChannelSetAttribute);
+	LOAD_BASS_SYMBOL(BASS_ChannelGetData);
+	LOAD_BASS_SYMBOL(BASS_RecordSetInput);
+	LOAD_BASS_SYMBOL(BASS_StreamPutData);
+	LOAD_BASS_SYMBOL(BASS_ChannelSetPosition);
+	LOAD_BASS_SYMBOL(BASS_ChannelIsActive);
+	LOAD_BASS_SYMBOL(BASS_ChannelSlideAttribute);
+	LOAD_BASS_SYMBOL(BASS_ChannelSet3DAttributes);
+	LOAD_BASS_SYMBOL(BASS_ChannelSet3DPosition);
+	LOAD_BASS_SYMBOL(BASS_SetVolume);
+
+#undef LOAD_BASS_SYMBOL
+
+	if (!BASS_Init || !BASS_Free || !BASS_SetConfigPtr || !BASS_SetConfig ||
+		!BASS_ChannelStop || !BASS_StreamCreateURL || !BASS_StreamCreate ||
+		!BASS_ChannelPlay || !BASS_ChannelPause || !BASS_ChannelGetTags ||
+		!BASS_ChannelSetSync || !BASS_StreamGetFilePosition || !BASS_StreamFree ||
+		!BASS_ErrorGetCode || !BASS_Set3DFactors || !BASS_Set3DPosition ||
+		!BASS_Apply3D || !BASS_ChannelSetFX || !BASS_ChannelRemoveFX ||
+		!BASS_FXSetParameters || !BASS_IsStarted || !BASS_RecordGetDeviceInfo ||
+		!BASS_RecordInit || !BASS_RecordGetDevice || !BASS_RecordFree ||
+		!BASS_RecordStart || !BASS_ChannelSetAttribute ||
+		!BASS_ChannelGetData || !BASS_RecordSetInput || !BASS_StreamPutData ||
+		!BASS_ChannelSetPosition || !BASS_ChannelIsActive ||
+		!BASS_ChannelSlideAttribute || !BASS_ChannelSet3DAttributes ||
+		!BASS_ChannelSet3DPosition || !BASS_SetVolume) {
+		spdlog::error("libbass.so is missing one or more required exports");
+		return false;
+	}
+
+	spdlog::info("BASS library loaded successfully");
+	return true;
 }
