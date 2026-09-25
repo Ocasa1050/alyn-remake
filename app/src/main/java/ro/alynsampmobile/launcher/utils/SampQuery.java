@@ -11,6 +11,7 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.StringTokenizer;
 
@@ -52,10 +53,12 @@ public class SampQuery {
 
             try {
                 String pktData = "p" + new String(randomBytes, charset);
-                sendPacket(initPacket(pktData));
+                if (!sendPacket(initPacket(pktData))) {
+                    return false;
+                }
                 data = receiveData();
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+            } catch (Exception ignored) {
+                return false;
             }
 
             if (data != null && data.length >= 15 &&
@@ -80,8 +83,14 @@ public class SampQuery {
     public String[] getInfo() {
         String[] infos = new String[6];
         try {
-            sendPacket(initPacket("i"));
-            ByteBuffer buff = ByteBuffer.wrap(receiveData());
+            if (!sendPacket(initPacket("i"))) {
+                return null;
+            }
+            byte[] data = receiveData();
+            if (data == null || data.length < 11) {
+                return null;
+            }
+            ByteBuffer buff = ByteBuffer.wrap(data);
             buff.order(ByteOrder.LITTLE_ENDIAN);
             buff.position(11);
 
@@ -137,29 +146,31 @@ public class SampQuery {
     }
 
     private byte[] receiveData() {
-        if (socket == null) {
-            return new byte[3072];
-        } else {
-            byte[] data = new byte[3072];
-            DatagramPacket getpacket = null;
-            try {
-                getpacket = new DatagramPacket(data, 3072);
-                socket.receive(getpacket);
-            } catch (IOException ignored) {
-            }
+        if (socket == null || socket.isClosed()) {
+            return null;
+        }
 
-            return getpacket.getData();
+        byte[] data = new byte[3072];
+        DatagramPacket getpacket = new DatagramPacket(data, data.length);
+        try {
+            socket.receive(getpacket);
+            return Arrays.copyOf(getpacket.getData(), getpacket.getLength());
+        } catch (IOException ignored) {
+            // A timeout means the server is offline. It is not a packet.
+            return null;
         }
     }
 
-    private void sendPacket(DatagramPacket d) {
-        try {
-            if (socket != null) {
-                socket.send(d);
-            }
-        } catch (IOException ignored) {
+    private boolean sendPacket(DatagramPacket d) {
+        if (d == null || socket == null || socket.isClosed()) {
+            return false;
         }
-
+        try {
+            socket.send(d);
+            return true;
+        } catch (IOException ignored) {
+            return false;
+        }
     }
 
     public void close() {

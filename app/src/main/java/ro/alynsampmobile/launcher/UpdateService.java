@@ -30,6 +30,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -61,6 +62,7 @@ public class UpdateService extends Service {
     public int mDownloadFailedOffset;
 
     public String mUpdateVersion;
+    private int mIncompatibleGpuFiles;
 
     public void onCreate() {
         HandlerThread thread = new HandlerThread("ServiceStartArguments", 10);
@@ -270,6 +272,7 @@ public class UpdateService extends Service {
         Log.d("UpdateService", "checkGameFilesUpdate");
 
         mUpdateFilesSizeTotal = 0;
+        mIncompatibleGpuFiles = 0;
 
         String data_str = Utils.getStringOutputByURL(list_url);
         JSONObject data_json = new JSONObject(data_str);
@@ -286,6 +289,15 @@ public class UpdateService extends Service {
         for (FileData fileData : dataList) {
             File forCheck = new File(getExternalFilesDir(null), fileData.getPath());
 
+            String fileGpu = getFileGpu(fileData);
+            if (!isGpuCompatible(fileGpu)) {
+                mIncompatibleGpuFiles++;
+                Log.w("UpdateService", "Skipping unsupported GPU file: " + fileData.getPath()
+                        + " (manifest gpu=" + fileData.getGpu()
+                        + ", detected=" + Utils.GPU_TYPE.name() + ")");
+                continue;
+            }
+
             boolean modifyFiles = getSharedPreferences("samp_settings", Context.MODE_PRIVATE).getBoolean("modify_files", false);
 
             // skip checking file size if not using modify_files
@@ -293,20 +305,62 @@ public class UpdateService extends Service {
                 continue; // The file exists and has the correct size; no need to update.
             }
 
-            if (!fileData.getGpu().equals("all")) {
-                if ((fileData.getGpu().equals("dxt") && Utils.GPU_TYPE != Utils.GPUType.DXT) ||
-                        (fileData.getGpu().equals("pvr") && Utils.GPU_TYPE != Utils.GPUType.PVR) ||
-                        (fileData.getGpu().equals("etc") && Utils.GPU_TYPE != Utils.GPUType.ETC)) {
-                    continue; // GPU type doesn't match; skip this file.
-                }
-            }
-
-            System.out.println("Missing/Corrupted file: " + fileData.getPath() + " | " + fileData.getSize() + " bytes");
-            System.out.println("File: " + forCheck.getAbsolutePath() + " | " + (forCheck.exists() ? forCheck.length() + " bytes" : "missing"));
+            Log.i("UpdateService", "Missing/Corrupted file: " + fileData.getPath()
+                    + " | gpu=" + fileGpu + " | " + fileData.getSize() + " bytes");
+            Log.i("UpdateService", "File: " + forCheck.getAbsolutePath()
+                    + " | " + (forCheck.exists() ? forCheck.length() + " bytes" : "missing"));
 
             mUpdateFiles.add(fileData);
             mUpdateFilesSizeTotal += fileData.getSize();
         }
+
+        if (mIncompatibleGpuFiles > 0) {
+            Log.e("UpdateService", "The game file manifest contains " + mIncompatibleGpuFiles
+                    + " files for another GPU format. Publish an ETC variant for ETC devices.");
+        }
+    }
+
+    private String getFileGpu(FileData fileData) {
+        String gpu = fileData.getGpu();
+        if (!"all".equals(gpu)) {
+            return gpu;
+        }
+
+        // Older manifests marked every texture as "all". Do not let a
+        // format encoded in the filename bypass GPU filtering.
+        String path = fileData.getPath().toLowerCase(Locale.ROOT);
+        if (path.contains(".dxt.")) {
+            return "dxt";
+        }
+        if (path.contains(".pvr.")) {
+            return "pvr";
+        }
+        if (path.contains(".etc.")) {
+            return "etc";
+        }
+        return "all";
+    }
+
+    private boolean isGpuCompatible(String fileGpu) {
+        if ("all".equals(fileGpu)) {
+            return true;
+        }
+        if (Utils.GPU_TYPE == Utils.GPUType.NONE) {
+            Log.w("UpdateService", "GPU type is not initialized; rejecting " + fileGpu + " file");
+            return false;
+        }
+        if ("dxt".equals(fileGpu)) {
+            return Utils.GPU_TYPE == Utils.GPUType.DXT;
+        }
+        if ("pvr".equals(fileGpu)) {
+            return Utils.GPU_TYPE == Utils.GPUType.PVR;
+        }
+        if ("etc".equals(fileGpu)) {
+            return Utils.GPU_TYPE == Utils.GPUType.ETC;
+        }
+
+        Log.w("UpdateService", "Unknown GPU format in manifest: " + fileGpu);
+        return false;
     }
 
     public void setUpdateStatus(UpdateActivity.UpdateStatus status) {

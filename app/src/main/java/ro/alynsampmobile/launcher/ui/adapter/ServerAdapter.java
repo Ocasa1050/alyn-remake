@@ -323,14 +323,22 @@ public class ServerAdapter extends RecyclerView.Adapter<ServerAdapter.ViewHolder
     }
 
     public boolean getServerInfo(int position, String address) {
+        SampQuery sampQuery = null;
         try {
             if (!getServerInfoFromApi(position, address)) {
-                String host = address.split(":")[0];
-                String port = address.split(":")[1];
-                SampQuery sampQuery = new SampQuery(host, Integer.parseInt(port));
+                String[] addressParts = address.split(":", 2);
+                if (addressParts.length != 2) {
+                    return false;
+                }
+                String host = addressParts[0];
+                String port = addressParts[1];
+                sampQuery = new SampQuery(host, Integer.parseInt(port));
 
                 if (sampQuery.isOnline()) {
                     String[] infos = sampQuery.getInfo();
+                    if (infos == null || infos.length < 6) {
+                        return false;
+                    }
                     String password = infos[0];
                     String players = infos[1];
                     String maxplayers = infos[2];
@@ -347,10 +355,14 @@ public class ServerAdapter extends RecyclerView.Adapter<ServerAdapter.ViewHolder
                 } else {
                     return false;
                 }
-                sampQuery.close();
             }
         } catch (Exception e) {
-            Log.e("SAMPQuery", e.toString());
+            Log.e("SAMPQuery", "Could not query " + address, e);
+            return false;
+        } finally {
+            if (sampQuery != null) {
+                sampQuery.close();
+            }
         }
         return true;
     }

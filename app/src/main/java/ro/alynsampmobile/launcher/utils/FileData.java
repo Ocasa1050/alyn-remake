@@ -5,6 +5,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 import com.joom.paranoid.Obfuscate;
 
@@ -21,7 +22,7 @@ public class FileData {
         this.path = path;
         this.size = size;
         this.url = url;
-        this.gpu = gpu;
+        this.gpu = normalizeGpu(gpu);
     }
 
     public String getName() {
@@ -42,6 +43,15 @@ public class FileData {
 
     public String getGpu() {
         return gpu;
+    }
+
+    private static String normalizeGpu(String gpu) {
+        if (gpu == null) {
+            return "all";
+        }
+
+        String normalized = gpu.trim().toLowerCase(Locale.ROOT);
+        return normalized.isEmpty() ? "all" : normalized;
     }
 
     public static ArrayList<FileData> getListByJson(JSONObject json) throws JSONException {

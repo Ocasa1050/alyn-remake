@@ -68,13 +68,37 @@ JNIEnv* Java::getEnv()
 
 jstring createJString(JNIEnv* env, const char* text)
 {
-	jclass strClass = env->FindClass("java/lang/String");
-	jmethodID ctorID = env->GetMethodID(strClass, "<init>", "([BLjava/lang/String;)V");
-	jstring encoding = env->NewStringUTF("UTF-8");
+	if (!env || !text || env->ExceptionCheck()) {
+		return nullptr;
+	}
 
-	jbyteArray bytes = env->NewByteArray(strlen(text));
-	env->SetByteArrayRegion(bytes, 0, strlen(text), (jbyte*) text);
-	return (jstring) env->NewObject(strClass, ctorID, bytes, encoding);
+	jclass strClass = env->FindClass("java/lang/String");
+	if (env->ExceptionCheck() || !strClass) {
+		return nullptr;
+	}
+
+	jmethodID ctorID = env->GetMethodID(strClass, "<init>", "([BLjava/lang/String;)V");
+	if (env->ExceptionCheck() || !ctorID) {
+		return nullptr;
+	}
+
+	jstring encoding = env->NewStringUTF("UTF-8");
+	if (env->ExceptionCheck() || !encoding) {
+		return nullptr;
+	}
+	const jsize length = static_cast<jsize>(strlen(text));
+	jbyteArray bytes = env->NewByteArray(length);
+	if (env->ExceptionCheck() || !bytes) {
+		return nullptr;
+	}
+
+	env->SetByteArrayRegion(bytes, 0, length, (jbyte*) text);
+	if (env->ExceptionCheck()) {
+		return nullptr;
+	}
+
+	jstring result = (jstring) env->NewObject(strClass, ctorID, bytes, encoding);
+	return env->ExceptionCheck() ? nullptr : result;
 }
 
 void Java::setPauseState(bool pause)
@@ -111,7 +135,7 @@ void Java::showDialog(int dialog_id, int dialog_style, char* title, char* messag
 {
 	JNIEnv* env = getEnv();
 
-	if (!env) {
+	if (!env || env->ExceptionCheck()) {
 		spdlog::error("No env");
 		return;
 	}
@@ -120,6 +144,11 @@ void Java::showDialog(int dialog_id, int dialog_style, char* title, char* messag
 	jstring jmessage = createJString(env, message);
 	jstring jbutton1 = createJString(env, button1);
 	jstring jbutton2 = createJString(env, button2);
+
+	if (env->ExceptionCheck() || !jtitle || !jmessage || !jbutton1 || !jbutton2) {
+		spdlog::error("Unable to create dialog strings because Java has a pending exception");
+		return;
+	}
 
 	env->CallVoidMethod(m_uiActivity, m_showDialog, dialog_id, dialog_style, jtitle, jmessage, jbutton1, jbutton2);
 }
@@ -183,11 +212,17 @@ extern "C" JNIEXPORT jboolean JNICALL Java_ro_alynsampmobile_launcher_utils_Sign
 
 extern "C" JNIEXPORT void JNICALL Java_ro_alynsampmobile_game_SAMP_initializeSAMP(JNIEnv* env, jobject sampObj, jobject uiObj, jstring gameDir, jboolean isOffline)
 {
+	if (!env || env->ExceptionCheck() || !gameDir) {
+		return;
+	}
+
 	const char* gameDirCStr = env->GetStringUTFChars(gameDir, nullptr);
+	if (env->ExceptionCheck() || !gameDirCStr) {
+		return;
+	}
+
 	std::string gameDirStr(gameDirCStr);
 	env->ReleaseStringUTFChars(gameDir, gameDirCStr);
-
-
 
 	Client::initialize(gameDirStr, isOffline);
 	g_java = new Java(env, sampObj, uiObj);
