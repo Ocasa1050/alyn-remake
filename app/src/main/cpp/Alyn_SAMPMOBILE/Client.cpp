@@ -135,7 +135,7 @@ void Client::initialize(const std::string& gameDir, bool offlineMode)
 	firebase::crashlytics::SetCustomKey("libGTASA.so", str);
 
 	sa::Initialize();
-	LoadBassLibrary();
+	const bool bassLoaded = LoadBassLibrary();
 
 	Hooks::install();
 	Patches::apply();
@@ -144,9 +144,11 @@ void Client::initialize(const std::string& gameDir, bool offlineMode)
 
 	pGame = new Game();
 
-	if (Settings::voice()) {
+	if (Settings::voice() && bassLoaded) {
 		Plugin::OnPluginLoad();
 		Plugin::OnSampLoad();
+	} else if (Settings::voice()) {
+		spdlog::error("Voice chat disabled because BASS could not be loaded");
 	}
 
 	pthread_t thread;
@@ -178,7 +180,9 @@ void Client::process()
 		Patches::preApply();
 
 		pGame->Initialize();
-		pAudioStream->Initialize();
+		if (!pAudioStream->Initialize()) {
+			spdlog::warn("Audio streaming disabled because BASS is unavailable");
+		}
 
 		pUI->splashscreen()->setVisible(false);
 		pUI->chat()->setVisible(true);

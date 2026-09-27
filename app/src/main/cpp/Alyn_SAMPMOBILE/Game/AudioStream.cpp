@@ -54,6 +54,11 @@ bool AudioStream::Initialize()
 
 	bassStream = 0;
 
+	if (!BASS_Free || !BASS_Init || !BASS_SetConfigPtr || !BASS_SetConfig) {
+		spdlog::error("AudioStream cannot initialize because BASS is unavailable");
+		return false;
+	}
+
 	BASS_Free();
 	if (!BASS_Init(-1, 44100, 0)) return false;
 

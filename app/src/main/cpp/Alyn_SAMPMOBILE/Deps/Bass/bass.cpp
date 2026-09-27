@@ -40,14 +40,18 @@ int (*BASS_ChannelSet3DAttributes) (uint32_t, int, float, float, int, int, float
 int (*BASS_ChannelSet3DPosition) (uint32_t, const BASS_3DVECTOR*, const BASS_3DVECTOR*, const BASS_3DVECTOR*);
 int (*BASS_SetVolume) (float);
 
-void LoadBassLibrary()
+bool LoadBassLibrary()
 {
 	spdlog::info("Loading BASS library..");
-    void* v0 = dlopen("libBASS.so", RTLD_LAZY);
+	void* v0 = dlopen("libbass.so", RTLD_NOW | RTLD_LOCAL);
 
 	if (!v0) {
-		spdlog::info(dlerror());
-		return;
+		const char* error = dlerror();
+		spdlog::error(
+			"Failed to load libbass.so: {}",
+			error ? error : "unknown linker error"
+		);
+		return false;
 	}
 
 	BASS_Init = (int (*)(uint32_t, uint32_t, uint32_t))dlsym(v0, "BASS_Init");
@@ -86,4 +90,24 @@ void LoadBassLibrary()
 	BASS_ChannelSet3DAttributes = (int (*)(uint32_t, int, float, float, int, int, float))dlsym(v0, "BASS_ChannelSet3DAttributes");
 	BASS_ChannelSet3DPosition = (int (*)(uint32_t, const BASS_3DVECTOR*, const BASS_3DVECTOR*, const BASS_3DVECTOR*))dlsym(v0, "BASS_ChannelSet3DPosition");
 	BASS_SetVolume = (int (*)(float))dlsym(v0, "BASS_SetVolume");
+
+	if (!BASS_Init || !BASS_Free || !BASS_SetConfigPtr || !BASS_SetConfig ||
+		!BASS_ChannelStop || !BASS_StreamCreateURL || !BASS_StreamCreate ||
+		!BASS_ChannelPlay || !BASS_ChannelPause || !BASS_ChannelGetTags ||
+		!BASS_ChannelSetSync || !BASS_StreamGetFilePosition || !BASS_StreamFree ||
+		!BASS_ErrorGetCode || !BASS_Set3DFactors || !BASS_Set3DPosition ||
+		!BASS_Apply3D || !BASS_ChannelSetFX || !BASS_ChannelRemoveFX ||
+		!BASS_FXSetParameters || !BASS_IsStarted || !BASS_RecordGetDeviceInfo ||
+		!BASS_RecordInit || !BASS_RecordGetDevice || !BASS_RecordFree ||
+		!BASS_RecordStart || !BASS_ChannelSetAttribute ||
+		!BASS_ChannelGetData || !BASS_RecordSetInput || !BASS_StreamPutData ||
+		!BASS_ChannelSetPosition || !BASS_ChannelIsActive ||
+		!BASS_ChannelSlideAttribute || !BASS_ChannelSet3DAttributes ||
+		!BASS_ChannelSet3DPosition || !BASS_SetVolume) {
+		spdlog::error("libbass.so is missing one or more required exports");
+		return false;
+	}
+
+	spdlog::info("BASS library loaded successfully");
+	return true;
 }
