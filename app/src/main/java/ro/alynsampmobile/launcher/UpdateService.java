@@ -26,9 +26,13 @@ import com.joom.paranoid.Obfuscate;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.zip.Adler32;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Objects;
@@ -169,12 +173,11 @@ public class UpdateService extends Service {
                             }
                         }
 
-                        String data_url = data.optString("game_files", "");
-                        if (data_url.isEmpty()) {
-                            data_url = getSharedPreferences("samp_settings", Context.MODE_PRIVATE).getString("files_type", "none").equals("full") ?
-                                    data.optString("full_list_url", "https://alynsampmobile.pro/api/game-files") : data.optString("lite_list_url", "https://alynsampmobile.pro/api/game-files");
-                        }
-                        String samp_data_url = data.optString("samp_list_url", "");
+                        // The CRMP cache is the complete client-side game package. It
+                        // includes the replacement gta.dat, IDE/IPL files, archives,
+                        // collisions, and the additional map files.
+                        String data_url = Utils.crmpGameFiles;
+                        String samp_data_url = "";
 
                         checkGameFilesUpdate(data_url, samp_data_url);
 
@@ -301,7 +304,12 @@ public class UpdateService extends Service {
             boolean modifyFiles = getSharedPreferences("samp_settings", Context.MODE_PRIVATE).getBoolean("modify_files", false);
 
             // skip checking file size if not using modify_files
-            if (modifyFiles ? forCheck.exists() : (forCheck.exists() && forCheck.length() == fileData.getSize())) {
+            boolean fileMatches = forCheck.exists() && forCheck.length() == fileData.getSize();
+            if (fileMatches && fileData.getHash() > 0) {
+                fileMatches = getFileHash(forCheck) == fileData.getHash();
+            }
+
+            if (modifyFiles ? forCheck.exists() : fileMatches) {
                 continue; // The file exists and has the correct size; no need to update.
             }
 
@@ -318,6 +326,18 @@ public class UpdateService extends Service {
             Log.e("UpdateService", "The game file manifest contains " + mIncompatibleGpuFiles
                     + " files for another GPU format. Publish an ETC variant for ETC devices.");
         }
+    }
+
+    private long getFileHash(File file) throws IOException {
+        Adler32 checksum = new Adler32();
+        try (InputStream input = new FileInputStream(file)) {
+            byte[] buffer = new byte[32768];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                checksum.update(buffer, 0, read);
+            }
+        }
+        return checksum.getValue();
     }
 
     private String getFileGpu(FileData fileData) {
@@ -442,42 +462,41 @@ public class UpdateService extends Service {
                     for (int attempt = 0; attempt < 3 && !success; attempt++) {
                         try (Response response = downloadClient.newCall(request).execute()) {
                             if (response.isSuccessful() && response.body() != null) {
-                                try (InputStream is = response.body().byteStream();
-                                     FileOutputStream fos = new FileOutputStream(tempFile)) {
-                                    byte[] buffer = new byte[32768];
-                                    int read;
-                                    while ((read = is.read(buffer)) != -1) {
-                                        fos.write(buffer, 0, read);
-                                        long nowBytes = currentBytes.addAndGet(read);
+                                long extractedSize;
+                                Adler32 extractedHash = new Adler32();
+                                try (InputStream responseStream = response.body().byteStream()) {
+                                    extractedSize = writeDownloadPayload(
+                                            responseStream,
+                                            tempFile,
+                                            fileData,
+                                            currentBytes,
+                                            lastUiUpdateTime,
+                                            tempUpdateFiles.size(),
+                                            completedFiles.get(),
+                                            extractedHash
+                                    );
+                                }
 
-                                        long nowTime = System.currentTimeMillis();
-                                        if (nowTime - lastUiUpdateTime.get() > 100) {
-                                            lastUiUpdateTime.set(nowTime);
-                                            Message outMsg = Message.obtain(mInHandler, 4);
-                                            outMsg.getData().putString(NotificationCompat.CATEGORY_STATUS, UpdateActivity.UpdateStatus.DownloadGameFiles.name());
-                                            outMsg.getData().putBoolean("withProgress", true);
-                                            outMsg.getData().putLong("current", nowBytes);
-                                            outMsg.getData().putLong("total", mUpdateFilesSizeTotal);
-                                            outMsg.getData().putString("filename", fileData.getName());
-                                            outMsg.getData().putLong("totalfiles", (long) tempUpdateFiles.size());
-                                            outMsg.getData().putLong("currentfile", (long) completedFiles.get());
-                                            outMsg.replyTo = mMessenger;
-                                            if (mActivityMessenger != null) {
-                                                try {
-                                                    mActivityMessenger.send(outMsg);
-                                                } catch (RemoteException ignored) {
-                                                }
-                                            }
-                                        }
-                                    }
-                                    fos.flush();
+                                if (fileData.getSize() > 0 && extractedSize != fileData.getSize()) {
+                                    throw new IOException("Size mismatch for " + fileData.getPath()
+                                            + ": expected " + fileData.getSize()
+                                            + ", got " + extractedSize);
+                                }
+                                if (fileData.getHash() > 0 && extractedHash.getValue() != fileData.getHash()) {
+                                    throw new IOException("Hash mismatch for " + fileData.getPath());
                                 }
 
                                 if (targetFile.exists()) {
                                     targetFile.delete();
                                 }
-                                tempFile.renameTo(targetFile);
+                                if (!tempFile.renameTo(targetFile)) {
+                                    throw new IOException("Could not move downloaded file into place: "
+                                            + targetFile.getAbsolutePath());
+                                }
                                 success = true;
+                            }
+                            else {
+                                throw new IOException("HTTP " + response.code() + " for " + fileData.getUrl());
                             }
                         } catch (Exception e) {
                             if (attempt == 2) {
@@ -508,6 +527,78 @@ public class UpdateService extends Service {
             sendLoadingScreen(false, "", 0, 0);
             updateGame();
         }).start();
+    }
+
+    private long writeDownloadPayload(
+            InputStream source,
+            File tempFile,
+            FileData fileData,
+            AtomicLong currentBytes,
+            AtomicLong lastUiUpdateTime,
+            int totalFiles,
+            int currentFile,
+            Adler32 checksum
+    ) throws IOException {
+        InputStream payload = source;
+        ZipInputStream zipInputStream = null;
+
+        if (fileData.isZipArchive()) {
+            zipInputStream = new ZipInputStream(source);
+            ZipEntry entry;
+            boolean foundPayload = false;
+            while ((entry = zipInputStream.getNextEntry()) != null) {
+                if ("payload".equals(entry.getName())) {
+                    foundPayload = true;
+                    payload = zipInputStream;
+                    break;
+                }
+            }
+            if (!foundPayload) {
+                zipInputStream.close();
+                throw new IOException("Cache archive does not contain a payload entry: "
+                        + fileData.getUrl());
+            }
+        }
+
+        long written = 0;
+        try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+            byte[] buffer = new byte[32768];
+            int read;
+            while ((read = payload.read(buffer)) != -1) {
+                fos.write(buffer, 0, read);
+                written += read;
+                checksum.update(buffer, 0, read);
+                long nowBytes = currentBytes.addAndGet(read);
+
+                long nowTime = System.currentTimeMillis();
+                if (nowTime - lastUiUpdateTime.get() > 100) {
+                    lastUiUpdateTime.set(nowTime);
+                    Message outMsg = Message.obtain(mInHandler, 4);
+                    outMsg.getData().putString(NotificationCompat.CATEGORY_STATUS,
+                            UpdateActivity.UpdateStatus.DownloadGameFiles.name());
+                    outMsg.getData().putBoolean("withProgress", true);
+                    outMsg.getData().putLong("current", nowBytes);
+                    outMsg.getData().putLong("total", mUpdateFilesSizeTotal);
+                    outMsg.getData().putString("filename", fileData.getName());
+                    outMsg.getData().putLong("totalfiles", (long) totalFiles);
+                    outMsg.getData().putLong("currentfile", (long) currentFile);
+                    outMsg.replyTo = mMessenger;
+                    if (mActivityMessenger != null) {
+                        try {
+                            mActivityMessenger.send(outMsg);
+                        } catch (RemoteException ignored) {
+                        }
+                    }
+                }
+            }
+            fos.flush();
+        } finally {
+            if (zipInputStream != null) {
+                zipInputStream.close();
+            }
+        }
+
+        return written;
     }
 
     private void sendLoadingScreen(final boolean unpacking, final String fileName, final long current, final long total) {

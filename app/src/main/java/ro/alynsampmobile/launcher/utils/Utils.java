@@ -47,6 +47,7 @@ import ro.alynsampmobile.launcher.ui.fragment.SupportPageFragment;
 public class Utils {
     public static String copyright = "Copyright © Alyn_SAMPMOBILE";
     public static String web = "https://huggingface.co/datasets/Kompres/alyn-game-data/raw/main/";
+    public static String crmpGameFiles = "https://raw.githubusercontent.com/Ocasa1050/sasamp-game-cache/main/release/files.json";
     public static String github = "https://github.com/Ocasa1050/alyn-remake";
     public static String update = web + "update.json";
     public static String discord = "https://discord.gg/";

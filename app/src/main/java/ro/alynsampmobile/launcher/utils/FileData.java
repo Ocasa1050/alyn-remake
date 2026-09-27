@@ -14,13 +14,15 @@ public class FileData {
     private final String name;
     private final String path;
     private final long size;
+    private final long hash;
     private final String url;
     private final String gpu;
 
-    public FileData(String name, String path, long size, String url, String gpu) {
+    public FileData(String name, String path, long size, long hash, String url, String gpu) {
         this.name = name;
         this.path = path;
         this.size = size;
+        this.hash = hash;
         this.url = url;
         this.gpu = normalizeGpu(gpu);
     }
@@ -35,6 +37,10 @@ public class FileData {
 
     public long getSize() {
         return size;
+    }
+
+    public long getHash() {
+        return hash;
     }
 
     public String getUrl() {
@@ -60,8 +66,12 @@ public class FileData {
         JSONArray arr = json.getJSONArray("files");
         for (int i = 0; i < arr.length(); i++) {
             JSONObject obj = arr.getJSONObject(i);
-            String name = obj.optString("name", "");
             String path = obj.optString("path", "");
+            String name = obj.optString("name", "");
+            if (name.isEmpty()) {
+                int separator = path.lastIndexOf('/');
+                name = separator >= 0 ? path.substring(separator + 1) : path;
+            }
             long size = 0;
             try {
                 size = obj.optLong("size", 0);
@@ -70,10 +80,15 @@ public class FileData {
                 }
             } catch (Exception ignored) {
             }
+            long hash = obj.optLong("hash", 0);
             String url = obj.optString("url", "");
             String gpu = obj.optString("gpu", "all");
-            list.add(new FileData(name, path, size, url, gpu));
+            list.add(new FileData(name, path, size, hash, url, gpu));
         }
         return list;
+    }
+
+    public boolean isZipArchive() {
+        return url.toLowerCase(Locale.ROOT).endsWith(".zip");
     }
 }
