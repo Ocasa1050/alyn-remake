@@ -1,5 +1,11 @@
 #include <sys/sysinfo.h>
+#include <dirent.h>
 #include <EGL/egl.h>
+#include <strings.h>
+
+#include <cctype>
+#include <cstdio>
+#include <string>
 
 #include "Game.h"
 #include "../UI/UI.h"
@@ -13,6 +19,129 @@
 extern UI *pUI;
 extern Game *pGame;
 extern NetGame *pNetGame;
+
+namespace
+{
+bool isPathSeparator(char value)
+{
+	return value == '/' || value == '\\';
+}
+
+bool pathStartsWith(const char *path, const char *prefix)
+{
+	if (path == nullptr || prefix == nullptr)
+	{
+		return false;
+	}
+
+	while (*prefix != '\0')
+	{
+		if (*path == '\0')
+		{
+			return false;
+		}
+
+		if (isPathSeparator(*path) && isPathSeparator(*prefix))
+		{
+			++path;
+			++prefix;
+			continue;
+		}
+
+		if (std::tolower(static_cast<unsigned char>(*path)) !=
+			std::tolower(static_cast<unsigned char>(*prefix)))
+		{
+			return false;
+		}
+
+		++path;
+		++prefix;
+	}
+
+	return true;
+}
+
+/*
+ * The Android game data is stored on a case-sensitive filesystem, while the
+ * original GTA data files refer to paths using Windows-style casing. Resolve
+ * each component against the directory that actually exists before passing
+ * the path to the game's file layer.
+ */
+std::string resolveGamePathCaseInsensitive(const char *virtualPath)
+{
+	if (virtualPath == nullptr || Client::gameDir() == nullptr)
+	{
+		return {};
+	}
+
+	std::string relativePath;
+	for (const char *cursor = virtualPath; *cursor != '\0'; ++cursor)
+	{
+		relativePath.push_back(*cursor == '\\' ? '/' : *cursor);
+	}
+
+	if (relativePath.empty() || relativePath.front() == '/')
+	{
+		return {};
+	}
+
+	std::string currentDirectory = Client::gameDir();
+	std::string resolvedPath;
+	std::size_t componentStart = 0;
+
+	while (componentStart < relativePath.size())
+	{
+		const std::size_t separator = relativePath.find('/', componentStart);
+		const std::size_t componentEnd =
+			separator == std::string::npos ? relativePath.size() : separator;
+		const std::string component =
+			relativePath.substr(componentStart, componentEnd - componentStart);
+
+		if (component.empty() || component == "." || component == "..")
+		{
+			return {};
+		}
+
+		DIR *directory = opendir(currentDirectory.c_str());
+		if (directory == nullptr)
+		{
+			return {};
+		}
+
+		std::string actualComponent;
+		while (const dirent *entry = readdir(directory))
+		{
+			if (strcasecmp(entry->d_name, component.c_str()) == 0)
+			{
+				actualComponent = entry->d_name;
+				break;
+			}
+		}
+		closedir(directory);
+
+		if (actualComponent.empty())
+		{
+			return {};
+		}
+
+		if (!resolvedPath.empty())
+		{
+			resolvedPath.push_back('/');
+		}
+		resolvedPath += actualComponent;
+		currentDirectory.push_back('/');
+		currentDirectory += actualComponent;
+
+		if (separator == std::string::npos)
+		{
+			break;
+		}
+		componentStart = separator + 1;
+	}
+
+	return resolvedPath;
+}
+} // namespace
 
 DECL_HOOK(void, AND_TouchEvent, int type, int num, int posX, int posY)
 {
@@ -96,65 +225,63 @@ DECL_HOOK(void, DisplayScreen)
 
 DECL_HOOK(int, OS_FileOpen, int a1, uintptr_t handle, char *name, int a2)
 {
-	char path[0xff] = {0};
+	char path[1024] = {0};
 
-	if (!strncmp(name, "data\\script\\mainV1.scm", 22))
+	if (pathStartsWith(name, "data\\script\\mainV1.scm"))
 	{
 		spdlog::info("Loading mainV1.scm..");
-		sprintf(path, "SAMP\\main.scm");
+		snprintf(path, sizeof(path), "SAMP\\main.scm");
 		name = path;
-		goto ret;
 	}
-
-	if (!strncmp(name, "DATA\\SCRIPT\\SCRIPTV1.IMG", 24))
+	else if (pathStartsWith(name, "DATA\\SCRIPT\\SCRIPTV1.IMG") ||
+			 pathStartsWith(name, "DATA\\SCRIPT\\SCRIPT.IMG"))
 	{
 		spdlog::info("Loading scriptV1.img..");
-		sprintf(path, "SAMP\\script.img");
+		snprintf(path, sizeof(path), "SAMP\\script.img");
 		name = path;
-		goto ret;
 	}
-
-	if (!strncmp(name, "DATA\\GTA.DAT", 12))
+	else if (pathStartsWith(name, "DATA\\GTA.DAT"))
 	{
 		spdlog::info("Loading gta.dat..");
-		sprintf(path, "SAMP\\gta.dat");
+		snprintf(path, sizeof(path), "SAMP\\gta.dat");
 		name = path;
-		goto ret;
 	}
-
-	if (!strncmp(name, "DATA\\PEDS.IDE", 13))
+	else if (pathStartsWith(name, "DATA\\PEDS.IDE"))
 	{
 		spdlog::info("Loading peds.ide..");
-		sprintf(path, "SAMP\\peds.ide");
+		snprintf(path, sizeof(path), "SAMP\\peds.ide");
 		name = path;
-		goto ret;
 	}
-
-	if (!strncmp(name, "DATA\\TIMECYC.DAT", 16))
+	else if (pathStartsWith(name, "DATA\\TIMECYC.DAT"))
 	{
 		spdlog::info("Loading timecyc.dat..");
-		sprintf(path, "SAMP\\timecyc.dat");
+		snprintf(path, sizeof(path), "SAMP\\timecyc.dat");
 		name = path;
-		goto ret;
 	}
-
-	if (!strncmp(name, "data\\paths\\tracks2.dat", 22))
+	else if (pathStartsWith(name, "data\\paths\\tracks2.dat"))
 	{
 		spdlog::info("Loading tracks2.dat...");
-		sprintf(path, "tracks2.dat");
+		snprintf(path, sizeof(path), "data\\paths\\tracks2.dat");
 		name = path;
-		goto ret;
 	}
-
-	if (!strncmp(name, "data\\paths\\tracks4.dat", 22))
+	else if (pathStartsWith(name, "data\\paths\\tracks4.dat"))
 	{
 		spdlog::info("Loading tracks4.dat...");
-		sprintf(path, "tracks4.dat");
+		snprintf(path, sizeof(path), "data\\paths\\tracks4.dat");
 		name = path;
-		goto ret;
 	}
 
-ret:
+	const std::string resolvedPath = resolveGamePathCaseInsensitive(name);
+	if (!resolvedPath.empty())
+	{
+		if (resolvedPath != name)
+		{
+			spdlog::info("Resolved game path: {} -> {}", name, resolvedPath);
+		}
+		snprintf(path, sizeof(path), "%s", resolvedPath.c_str());
+		name = path;
+	}
+
 	return OS_FileOpen(a1, handle, name, a2);
 }
 
