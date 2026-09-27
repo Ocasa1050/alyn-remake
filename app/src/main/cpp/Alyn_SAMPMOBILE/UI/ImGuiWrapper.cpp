@@ -3,6 +3,8 @@
 #include "../Game/Game.h"
 #include "../Net/NetGame.h"
 
+#include <fstream>
+
 extern NetGame* pNetGame;
 
 ImGuiWrapper::ImGuiWrapper(const ImVec2& display_size, const std::string& fonts_path)
@@ -41,6 +43,10 @@ bool ImGuiWrapper::initialize()
 	}
 
 	m_weapFont = loadFont("gtaweap3.ttf", UISettings::fontSize() / 2);
+	if (m_weapFont == nullptr) {
+		spdlog::warn("gtaweap3.ttf is not available; using the UI font for weapon labels");
+		m_weapFont = m_font;
+	}
 
 	createFontTexture();
 
@@ -71,6 +77,11 @@ ImFont* ImGuiWrapper::loadFont(const std::string& font_name, float font_size)
 	spdlog::info("ImGuiWrapper::loadFont: {} from {}", font_name.c_str(), m_fontsPath.c_str());
 
 	std::string fontPath = m_fontsPath + font_name;
+	std::ifstream fontFile(fontPath, std::ios::binary);
+	if (!fontFile.good()) {
+		spdlog::error("Font file is missing or unreadable: {}", fontPath.c_str());
+		return nullptr;
+	}
 
 	ImGuiIO& io = ImGui::GetIO();
 	ImFontConfig fontCfg;
