@@ -409,10 +409,17 @@ DECL_HOOK(void, CStreaming_InitImageList)
 			CStreaming_ms_files[i].m_lsn = 0;
 		}
 
-		Memory::callFunction<void>("_ZN10CStreaming14AddImageToListEPKcb", "TEXDB\\SAMPCOL.IMG", true);
-		Memory::callFunction<void>("_ZN10CStreaming14AddImageToListEPKcb", "TEXDB\\GTA3.IMG", true);
-		Memory::callFunction<void>("_ZN10CStreaming14AddImageToListEPKcb", "TEXDB\\GTA_INT.IMG", true);
-		Memory::callFunction<void>("_ZN10CStreaming14AddImageToListEPKcb", "TEXDB\\SAMP.IMG", true);
+		/*
+		 * AddImageToList can open the archive through a lower-level streaming
+		 * path that does not pass through OS_FileOpen on every device. Use the
+		 * exact cache paths here instead of the Windows-style paths from
+		 * gta.dat. paths.img is also required by the map path loader.
+		 */
+		Memory::callFunction<void>("_ZN10CStreaming14AddImageToListEPKcb", "texdb/SAMPCOL.img", true);
+		Memory::callFunction<void>("_ZN10CStreaming14AddImageToListEPKcb", "texdb/gta3.img", true);
+		Memory::callFunction<void>("_ZN10CStreaming14AddImageToListEPKcb", "texdb/gta_int.img", true);
+		Memory::callFunction<void>("_ZN10CStreaming14AddImageToListEPKcb", "texdb/samp.img", true);
+		Memory::callFunction<void>("_ZN10CStreaming14AddImageToListEPKcb", "data/maps/paths.img", true);
 	}
 	else
 	{
