@@ -263,18 +263,34 @@ DECL_HOOK(int, OS_FileOpen, int a1, uintptr_t handle, char *name, int a2)
 		snprintf(path, sizeof(path), "SAMP\\peds.ide");
 		name = path;
 	}
-else if (pathStartsWith(name, "DATA\\DEFAULT.IDE"))
-{
-spdlog::info("Loading default.ide..");
-snprintf(path, sizeof(path), "SAMP\\default.ide");
-name = path;
-}
-else if (pathStartsWith(name, "DATA\\VEHICLES.IDE"))
-{
-spdlog::info("Loading vehicles.ide..");
-snprintf(path, sizeof(path), "SAMP\\vehicles.ide");
-name = path;
-}
+	else if (pathStartsWith(name, "DATA\\DEFAULT.IDE") ||
+			 pathStartsWith(name, "DATA\\VEHICLES.IDE"))
+	{
+		/*
+		 * CRMP supplies these files when the base game cache is incomplete,
+		 * but they are not interchangeable with GTA:SA's own IDE files.
+		 * Prefer the original data file and only use the CRMP copy when the
+		 * original is genuinely absent.
+		 */
+		const bool isDefaultIde = pathStartsWith(name, "DATA\\DEFAULT.IDE");
+		const char *fallbackPath = isDefaultIde
+			? "SAMP\\default.ide"
+			: "SAMP\\vehicles.ide";
+
+		if (resolveGamePathCaseInsensitive(name).empty())
+		{
+			spdlog::warn("Base {} is missing; trying CRMP fallback: {}",
+				isDefaultIde ? "default.ide" : "vehicles.ide",
+				fallbackPath);
+			snprintf(path, sizeof(path), "%s", fallbackPath);
+			name = path;
+		}
+		else
+		{
+			spdlog::info("Using base {}",
+				isDefaultIde ? "default.ide" : "vehicles.ide");
+		}
+	}
 	else if (pathStartsWith(name, "DATA\\TIMECYC.DAT"))
 	{
 		spdlog::info("Loading timecyc.dat..");
