@@ -139,7 +139,18 @@ std::string resolveGamePathCaseInsensitive(const char *virtualPath)
 		componentStart = separator + 1;
 	}
 
-	return resolvedPath;
+if (resolvedPath.empty())
+{
+return {};
+}
+
+/*
+ * OS_FileOpen is also used by the Android asset layer, but files supplied by
+ * the external cache must bypass the process working directory entirely.
+ * Returning an absolute path prevents the native game from looking for
+ * TEXDB/ or DATA/ beside libGTASA.so instead of inside the launcher cache.
+ */
+return std::string(Client::gameDir()) + resolvedPath;
 }
 } // namespace
 
@@ -281,6 +292,16 @@ DECL_HOOK(int, OS_FileOpen, int a1, uintptr_t handle, char *name, int a2)
 		snprintf(path, sizeof(path), "%s", resolvedPath.c_str());
 		name = path;
 	}
+else if (name != nullptr &&
+         (pathStartsWith(name, "TEXDB\\") ||
+          pathStartsWith(name, "DATA\\") ||
+          pathStartsWith(name, "SAMP\\") ||
+          pathStartsWith(name, "data\\")))
+{
+spdlog::warn("Game cache file is missing: {} (root: {})",
+             name,
+             Client::gameDir() != nullptr ? Client::gameDir() : "<null>");
+}
 
 	return OS_FileOpen(a1, handle, name, a2);
 }
