@@ -145,12 +145,12 @@ return {};
 }
 
 /*
- * OS_FileOpen is also used by the Android asset layer, but files supplied by
- * the external cache must bypass the process working directory entirely.
- * Returning an absolute path prevents the native game from looking for
- * TEXDB/ or DATA/ beside libGTASA.so instead of inside the launcher cache.
+ * Keep the resolved path relative. The Android implementation of OS_FileOpen
+ * owns the data-root/asset lookup and expects a virtual game path. Passing an
+ * absolute external-files path makes that layer fail to create its file
+ * handle; the following OS_FileRead then dereferences a null handle.
  */
-return std::string(Client::gameDir()) + resolvedPath;
+return resolvedPath;
 }
 } // namespace
 
