@@ -347,29 +347,36 @@ DECL_HOOK(RwTexture *, CTxdStore_TxdStoreFindCB, const char *texture_name)
 {
 	// spdlog::info("Finding texture: {}", texture_name);
 
-	std::vector<std::string> texture_databases = {"gta_int", "gta3", "samp", "menu", "mobile"};
+std::vector<std::string> texture_databases = {
+    "gta_int", "gta3", "txd", "player", "samp", "menu", "mobile", "gui", "cutscene"
+};
 	for (const auto &texture_database : texture_databases)
 	{
 		auto database_handle = sa::TextureDatabaseRuntime::GetDatabase(texture_database.c_str());
+if (!database_handle)
+{
+continue;
+}
+
 		auto registered = sa::TextureDatabaseRuntime::registered();
 
-		if (!registered.dataPtr)
+if (!registered.dataPtr || !registered.numEntries)
 		{
-			break;
+continue;
 		}
 
-		for (int index = 0; index <= registered.numEntries; ++index)
+bool is_registered = false;
+for (unsigned int index = 0; index < registered.numEntries; ++index)
 		{
 			if (registered.dataPtr[index] == database_handle)
 			{
+is_registered = true;
 				break;
 			}
+}
 
-			if (index != registered.numEntries)
-			{
-				continue;
-			}
-
+if (is_registered)
+{
 			sa::TextureDatabaseRuntime::Register(database_handle);
 			RwTexture *texture = sa::TextureDatabaseRuntime::GetTexture(texture_name);
 			sa::TextureDatabaseRuntime::Unregister(database_handle);
@@ -379,7 +386,7 @@ DECL_HOOK(RwTexture *, CTxdStore_TxdStoreFindCB, const char *texture_name)
 				return texture;
 			}
 		}
-	}
+}
 
 	RwTexDictionary *current = Memory::callFunction<RwTexDictionary *>("_Z25RwTexDictionaryGetCurrentv");
 	while (current)
