@@ -263,6 +263,18 @@ DECL_HOOK(int, OS_FileOpen, int a1, uintptr_t handle, char *name, int a2)
 		snprintf(path, sizeof(path), "SAMP\\peds.ide");
 		name = path;
 	}
+else if (pathStartsWith(name, "DATA\\DEFAULT.IDE"))
+{
+spdlog::info("Loading default.ide..");
+snprintf(path, sizeof(path), "SAMP\\default.ide");
+name = path;
+}
+else if (pathStartsWith(name, "DATA\\VEHICLES.IDE"))
+{
+spdlog::info("Loading vehicles.ide..");
+snprintf(path, sizeof(path), "SAMP\\vehicles.ide");
+name = path;
+}
 	else if (pathStartsWith(name, "DATA\\TIMECYC.DAT"))
 	{
 		spdlog::info("Loading timecyc.dat..");
