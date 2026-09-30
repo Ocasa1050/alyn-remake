@@ -522,15 +522,19 @@ DECL_HOOK(int, CGame_InitialiseRenderWare)
 
 	sa::TextureDatabaseFormat textureFormat = sa::DF_Default;
 	const char *textureFormatName = "default";
-	if (!resolveGamePathCaseInsensitive("texdb/samp/samp.etc.dat").empty())
-	{
-		textureFormat = sa::DF_ETC;
-		textureFormatName = "ETC";
-	}
-	else if (!resolveGamePathCaseInsensitive("texdb/samp/samp.dxt.dat").empty())
+	/*
+	 * The published CRMP manifest has ETC/PVR aliases that contain the
+	 * DXT payload. Prefer the real DXT file whenever it is present.
+	 */
+	if (!resolveGamePathCaseInsensitive("texdb/samp/samp.dxt.dat").empty())
 	{
 		textureFormat = sa::DF_DXT;
 		textureFormatName = "DXT";
+	}
+	else if (!resolveGamePathCaseInsensitive("texdb/samp/samp.etc.dat").empty())
+	{
+		textureFormat = sa::DF_ETC;
+		textureFormatName = "ETC";
 	}
 	else if (!resolveGamePathCaseInsensitive("texdb/samp/samp.pvr.dat").empty())
 	{
