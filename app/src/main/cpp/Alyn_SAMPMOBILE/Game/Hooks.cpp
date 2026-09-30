@@ -5,6 +5,7 @@
 
 #include <cctype>
 #include <cstdio>
+#include <fstream>
 #include <string>
 
 #include "Game.h"
@@ -152,6 +153,72 @@ return {};
  */
 return resolvedPath;
 }
+
+std::string createSanitizedVehiclesIde()
+{
+	if (Client::gameDir() == nullptr)
+	{
+		return {};
+	}
+
+	std::string sourcePath = resolveGamePathCaseInsensitive("data/vehicles.ide");
+	if (sourcePath.empty())
+	{
+		sourcePath = resolveGamePathCaseInsensitive("SAMP/vehicles.ide");
+	}
+	if (sourcePath.empty())
+	{
+		return {};
+	}
+
+	const std::string sourceAbsolutePath =
+		std::string(Client::gameDir()) + sourcePath;
+	const std::string fixedVirtualPath = "SAMP/vehicles.fixed.ide";
+	const std::string fixedAbsolutePath =
+		std::string(Client::gameDir()) + fixedVirtualPath;
+
+	std::ifstream input(sourceAbsolutePath);
+	std::ofstream output(fixedAbsolutePath, std::ios::trunc);
+	if (!input.is_open() || !output.is_open())
+	{
+		return {};
+	}
+
+	std::string line;
+	while (std::getline(input, line))
+	{
+		std::size_t first = line.find_first_not_of(" \t");
+		const std::string firstField =
+			first == std::string::npos ? "" : line.substr(first);
+
+		if (firstField.compare(0, 4, "585,") == 0)
+		{
+			line = "585, emperor, emperor, car, EMPEROR, EMPEROR, "
+				   "null,normal,10, 0,0,-1, 0.74, 0.74,0";
+		}
+		else if (firstField.compare(0, 4, "586,") == 0)
+		{
+			line = "586, wayfarer, wayfarer, bike, WAYFARER, WAYFARE, "
+				   "wayfarer,motorbike,6,0,0,23, 0.654, 0.654,-1";
+		}
+		else if (firstField.compare(0, 4, "593,") == 0)
+		{
+			line = "593, dodo, dodo, plane, DODO, DODO, "
+				   "van,ignore,10,0,0,-1, 0.56, 0.56,-1";
+		}
+
+		output << line << '\n';
+	}
+
+	if (!output.good())
+	{
+		return {};
+	}
+
+	spdlog::info("Sanitized vehicles.ide from {} -> {}",
+		sourcePath, fixedVirtualPath);
+	return fixedVirtualPath;
+}
 } // namespace
 
 DECL_HOOK(void, AND_TouchEvent, int type, int num, int posX, int posY)
@@ -277,7 +344,23 @@ DECL_HOOK(int, OS_FileOpen, int a1, uintptr_t handle, char *name, int a2)
 			? "SAMP\\default.ide"
 			: "SAMP\\vehicles.ide";
 
-		if (resolveGamePathCaseInsensitive(name).empty())
+		if (!isDefaultIde)
+		{
+			const std::string sanitizedPath = createSanitizedVehiclesIde();
+			if (!sanitizedPath.empty())
+			{
+				snprintf(path, sizeof(path), "%s", sanitizedPath.c_str());
+				name = path;
+			}
+			else
+			{
+				spdlog::warn("Could not sanitize vehicles.ide; trying {}",
+					fallbackPath);
+				snprintf(path, sizeof(path), "%s", fallbackPath);
+				name = path;
+			}
+		}
+		else if (resolveGamePathCaseInsensitive(name).empty())
 		{
 			spdlog::warn("Base {} is missing; trying CRMP fallback: {}",
 				isDefaultIde ? "default.ide" : "vehicles.ide",
@@ -436,7 +519,32 @@ DECL_HOOK(int, CGame_InitialiseRenderWare)
 	spdlog::info("Initializing samp texture database...");
 
 	int result = CGame_InitialiseRenderWare();
-	sa::TextureDatabaseRuntime::Load("samp", false, sa::DF_ETC);
+
+	sa::TextureDatabaseFormat textureFormat = sa::DF_Default;
+	const char *textureFormatName = "default";
+	if (!resolveGamePathCaseInsensitive("texdb/samp/samp.etc.dat").empty())
+	{
+		textureFormat = sa::DF_ETC;
+		textureFormatName = "ETC";
+	}
+	else if (!resolveGamePathCaseInsensitive("texdb/samp/samp.dxt.dat").empty())
+	{
+		textureFormat = sa::DF_DXT;
+		textureFormatName = "DXT";
+	}
+	else if (!resolveGamePathCaseInsensitive("texdb/samp/samp.pvr.dat").empty())
+	{
+		textureFormat = sa::DF_PVR;
+		textureFormatName = "PVR";
+	}
+
+	spdlog::info("Loading samp texture database using {} format",
+		textureFormatName);
+	if (sa::TextureDatabaseRuntime::Load("samp", false, textureFormat) == nullptr)
+	{
+		spdlog::warn("SAMP texture database could not be loaded using {} format",
+			textureFormatName);
+	}
 	Client::initializeUI();
 	return result;
 }
