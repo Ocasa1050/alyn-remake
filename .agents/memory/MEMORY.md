@@ -1,1 +1,2 @@
 - [CRMP IDE source selection](crmp-ide-source-selection.md) — release cache includes both base and SAMP IDE files; prefer the base data copies.
+- [GitHub push authentication](github-push-auth.md) — use the x-access-token HTTPS form when bearer-header authentication is rejected.
