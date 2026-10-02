@@ -45,6 +45,7 @@ Java::Java(JNIEnv* env, jobject sampObj, jobject uiObj)
 	m_setWantedLevel = env->GetMethodID(uiClass, "setWantedLevel", "(I)V");
 
 	m_exitGame = env->GetMethodID(uiClass, "exitGame", "()V");
+	m_onServerData = env->GetMethodID(uiClass, "onServerData", "(Ljava/lang/String;)V");
 
 	env->DeleteLocalRef(sampClass);
 	env->DeleteLocalRef(uiClass);
@@ -197,6 +198,21 @@ void Java::exitGame()
 	env->CallVoidMethod(m_uiActivity, m_exitGame);
 }
 
+void Java::sendServerData(const char* data)
+{
+	JNIEnv* env = getEnv();
+	if (!env || env->ExceptionCheck() || !m_onServerData) {
+		return;
+	}
+
+	jstring jdata = createJString(env, data);
+	if (!jdata) {
+		return;
+	}
+
+	env->CallVoidMethod(m_uiActivity, m_onServerData, jdata);
+	env->DeleteLocalRef(jdata);
+}
 
 const std::string EXPECTED_SIGNATURE(OBFUSCATE("89cb277c5cd1a90145acb3c2a89cea995bfbd3b3e5ebe2b180d2248efc4aa041"));
 

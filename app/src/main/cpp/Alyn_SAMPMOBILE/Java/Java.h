@@ -23,6 +23,7 @@ public:
 	void setWantedLevel(int level);
 
 	void exitGame();
+	void sendServerData(const char* data);
 
 	jobject sampActivity() { return m_sampActivity; }
 	jobject uiActivity() { return m_uiActivity; }
@@ -42,6 +43,7 @@ private:
 	jmethodID m_setWantedLevel;
 
 	jmethodID m_exitGame;
+	jmethodID m_onServerData;
 };
 
 extern Java* g_java;

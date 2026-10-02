@@ -53,6 +53,13 @@ void Chat::addClientMessage(const std::string& message, const ImColor& color)
 
 void Chat::addMessage(const std::string& message, const ImColor& color)
 {
+	if (message.compare(0, 4, "#UI|") == 0) {
+		if (g_java) {
+			g_java->sendServerData(message.c_str() + 4);
+		}
+		return;
+	}
+
 	if (this->itemsCount() > UISettings::chatMaxMessages()) {
 		this->removeItem(0);
 	}

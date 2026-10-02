@@ -234,6 +234,13 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         _keyboardSend("/menubutton " + id);
     }
 
+    public void onServerData(String data) {
+        Log.i(TAG, "**** onServerData " + data);
+        samp.runOnUiThread(() -> {
+            if ("MENU".equals(data) && menuDialog != null) menuDialog.showMenu(true);
+        });
+    }
+
     public void addChatMessage(String message, String nick, String nickColor) {
         String formattedMessage = nick + ": " + message;
         SpannableString spannableString = new SpannableString(formattedMessage);
