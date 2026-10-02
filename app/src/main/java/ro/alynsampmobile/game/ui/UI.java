@@ -68,6 +68,7 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         loadingScreen = new LoadingScreen(samp);
         buttonPanel = new ButtonPanel(samp, this);
         menuDialog = new MenuDialog(samp, this);
+        menuDialog.showButton(true);
         voice = new Voice(samp, this);
         chat = new Chat(samp, this);
         editObject = new EditObject(samp);
