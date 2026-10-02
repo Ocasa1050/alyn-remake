@@ -52,7 +52,7 @@ public class DialogMenuAdapter extends RecyclerView.Adapter<DialogMenuAdapter.Di
             name = view.findViewById(R.id.item_menu_name_button);
             image = view.findViewById(R.id.item_menu_image);
             view.setOnClickListener(v -> {
-                int pos = getBindingAdapterPosition();
+                int pos = getAdapterPosition();
                 if (pos == RecyclerView.NO_POSITION) return;
                 onUserClickListener.click(list.get(pos), v);
             });
