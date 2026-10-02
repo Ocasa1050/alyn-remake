@@ -68,7 +68,6 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         loadingScreen = new LoadingScreen(samp);
         buttonPanel = new ButtonPanel(samp, this);
         menuDialog = new MenuDialog(samp, this);
-        menuDialog.showButton(true);
         voice = new Voice(samp, this);
         chat = new Chat(samp, this);
         editObject = new EditObject(samp);
@@ -109,7 +108,10 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
     }
 
     private void showLoadingScreen(boolean z) {
-        samp.runOnUiThread(() -> loadingScreen.show(z));
+        samp.runOnUiThread(() -> {
+            loadingScreen.show(z);
+            if (menuDialog != null) menuDialog.showButton(!z);
+        });
     }
 
     public void showEditObject(boolean z) {
