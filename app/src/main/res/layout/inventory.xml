@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Player matrix -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/playerMatLayout"
+        android:layout_width="@dimen/_102sdp"
+        android:layout_height="@dimen/_180sdp"
+        android:layout_marginBottom="@dimen/_30sdp"
+        android:background="@drawable/invx_matrix_bg"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/myLayout"
+        app:layout_constraintHorizontal_chainStyle="packed"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/playerMatrixRecycle"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginStart="@dimen/_3sdp"
+            android:layout_marginTop="@dimen/_4sdp"
+            android:layout_marginBottom="@dimen/_3sdp"
+            android:fadeScrollbars="false"
+            android:scrollbarStyle="outsideInset"
+            android:scrollbarThumbVertical="@drawable/invx_scroll"
+            android:scrollbarTrackVertical="@drawable/invx_scroll_bg"
+            android:scrollbars="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/playerMainIcon" />
+
+        <ImageView
+            android:id="@+id/playerMainIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/_65sdp"
+            android:layout_marginTop="8dp"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:src="@drawable/invx_player_placeholder"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageView
+            android:id="@+id/satietyIcon"
+            android:layout_width="@dimen/_8sdp"
+            android:layout_height="@dimen/_8sdp"
+            android:layout_marginStart="@dimen/_4sdp"
+            android:layout_marginTop="8dp"
+            android:src="@drawable/invx_satiety"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/playerMainIcon" />
+
+        <TextView
+            android:id="@+id/satietyText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/_2sdp"
+            android:fontFamily="@font/din_pro_bold"
+            android:includeFontPadding="false"
+            android:shadowColor="@color/black"
+            android:shadowRadius="1"
+            android:text="100"
+            android:textColor="@color/white"
+            android:textSize="@dimen/_7sdp"
+            app:layout_constraintBottom_toBottomOf="@+id/satietyIcon"
+            app:layout_constraintStart_toEndOf="@+id/satietyIcon"
+            app:layout_constraintTop_toTopOf="@+id/satietyIcon" />
+
+        <ImageView
+            android:id="@+id/healthIcon"
+            android:layout_width="@dimen/_8sdp"
+            android:layout_height="@dimen/_8sdp"
+            android:layout_marginStart="@dimen/_4sdp"
+            android:layout_marginTop="@dimen/_5sdp"
+            android:src="@drawable/invx_heart"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/satietyIcon" />
+
+        <TextView
+            android:id="@+id/healthText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/_2sdp"
+            android:fontFamily="@font/din_pro_bold"
+            android:includeFontPadding="false"
+            android:shadowColor="@color/black"
+            android:shadowRadius="1"
+            android:text="100"
+            android:textColor="@color/white"
+            android:textSize="@dimen/_7sdp"
+            app:layout_constraintBottom_toBottomOf="@+id/healthIcon"
+            app:layout_constraintStart_toEndOf="@+id/healthIcon"
+            app:layout_constraintTop_toTopOf="@+id/healthIcon" />
+
+        <ImageView
+            android:id="@+id/armourIcon"
+            android:layout_width="@dimen/_8sdp"
+            android:layout_height="@dimen/_8sdp"
+            android:layout_marginStart="@dimen/_4sdp"
+            android:layout_marginTop="@dimen/_5sdp"
+            android:src="@drawable/invx_armor"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/healthIcon" />
+
+        <TextView
+            android:id="@+id/armourText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/_2sdp"
+            android:fontFamily="@font/din_pro_bold"
+            android:includeFontPadding="false"
+            android:shadowColor="@color/black"
+            android:shadowRadius="1"
+            android:text="0"
+            android:textColor="@color/white"
+            android:textSize="@dimen/_7sdp"
+            app:layout_constraintBottom_toBottomOf="@+id/armourIcon"
+            app:layout_constraintStart_toEndOf="@+id/armourIcon"
+            app:layout_constraintTop_toTopOf="@+id/armourIcon" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- My items -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/myLayout"
+        android:layout_width="@dimen/_200sdp"
+        android:layout_height="@dimen/_180sdp"
+        android:layout_marginStart="@dimen/_5sdp"
+        android:background="@drawable/invx_matrix_bg"
+        app:layout_constraintBottom_toBottomOf="@+id/playerMatLayout"
+        app:layout_constraintEnd_toStartOf="@+id/additionalLayout"
+        app:layout_constraintStart_toEndOf="@+id/playerMatLayout">
+
+        <ImageView
+            android:id="@+id/myTopBg"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/_19sdp"
+            android:background="@drawable/invx_bg_top"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/myTopCaption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/_4sdp"
+            android:fontFamily="@font/din_pro_bold"
+            android:includeFontPadding="false"
+            android:shadowColor="@color/black"
+            android:shadowRadius="1"
+            android:text="Мои предметы"
+            android:textAllCaps="true"
+            android:textColor="@color/white"
+            android:textSize="@dimen/_8sdp"
+            app:layout_constraintBottom_toBottomOf="@+id/myTopBg"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/myMassText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/_4sdp"
+            android:fontFamily="@font/din_pro_bold"
+            android:includeFontPadding="false"
+            android:shadowColor="#000000"
+            android:shadowRadius="1"
+            android:text="0/50 КГ"
+            android:textColor="#CCCCCC"
+            android:textSize="@dimen/_7sdp"
+            app:layout_constraintBottom_toBottomOf="@+id/myTopBg"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/myMatrixRecycle"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="@dimen/_3sdp"
+            android:layout_marginTop="@dimen/_3sdp"
+            android:layout_marginBottom="@dimen/_3sdp"
+            android:fadeScrollbars="false"
+            android:scrollbarStyle="outsideInset"
+            android:scrollbarThumbVertical="@drawable/invx_scroll"
+            android:scrollbarTrackVertical="@drawable/invx_scroll_bg"
+            android:scrollbars="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/myTopBg" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/myButtonsLayout"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/_16sdp"
+            android:background="@drawable/invx_bg_bot"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <View
+                android:id="@+id/inv_use_butt"
+                android:layout_width="@dimen/_45sdp"
+                android:layout_height="@dimen/_10sdp"
+                android:layout_marginStart="@dimen/_3sdp"
+                android:background="@drawable/invx_button"
+                android:clickable="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/din_pro_bold"
+                android:includeFontPadding="false"
+                android:text="ИСПОЛЬЗОВАТЬ"
+                android:textColor="@color/white"
+                android:textSize="@dimen/_5sdp"
+                app:layout_constraintBottom_toBottomOf="@+id/inv_use_butt"
+                app:layout_constraintEnd_toEndOf="@+id/inv_use_butt"
+                app:layout_constraintStart_toStartOf="@+id/inv_use_butt"
+                app:layout_constraintTop_toTopOf="@+id/inv_use_butt" />
+
+            <View
+                android:id="@+id/inv_inf_butt"
+                android:layout_width="@dimen/_45sdp"
+                android:layout_height="@dimen/_10sdp"
+                android:layout_marginStart="@dimen/_3sdp"
+                android:background="@drawable/invx_button"
+                android:clickable="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/inv_use_butt"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/din_pro_bold"
+                android:includeFontPadding="false"
+                android:text="ИНФОРМАЦИЯ"
+                android:textColor="@color/white"
+                android:textSize="@dimen/_5sdp"
+                app:layout_constraintBottom_toBottomOf="@+id/inv_inf_butt"
+                app:layout_constraintEnd_toEndOf="@+id/inv_inf_butt"
+                app:layout_constraintStart_toStartOf="@+id/inv_inf_butt"
+                app:layout_constraintTop_toTopOf="@+id/inv_inf_butt" />
+
+            <View
+                android:id="@+id/inv_sell_butt"
+                android:layout_width="@dimen/_45sdp"
+                android:layout_height="@dimen/_10sdp"
+                android:layout_marginStart="@dimen/_3sdp"
+                android:background="@drawable/invx_button"
+                android:clickable="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/inv_inf_butt"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/din_pro_bold"
+                android:includeFontPadding="false"
+                android:text="ПРОДАТЬ"
+                android:textColor="@color/white"
+                android:textSize="@dimen/_5sdp"
+                app:layout_constraintBottom_toBottomOf="@+id/inv_sell_butt"
+                app:layout_constraintEnd_toEndOf="@+id/inv_sell_butt"
+                app:layout_constraintStart_toStartOf="@+id/inv_sell_butt"
+                app:layout_constraintTop_toTopOf="@+id/inv_sell_butt" />
+
+            <View
+                android:id="@+id/inv_del_butt"
+                android:layout_width="@dimen/_46sdp"
+                android:layout_height="@dimen/_10sdp"
+                android:layout_marginStart="@dimen/_3sdp"
+                android:background="@drawable/invx_button"
+                android:clickable="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/inv_sell_butt"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/din_pro_bold"
+                android:includeFontPadding="false"
+                android:text="УДАЛИТЬ"
+                android:textColor="@color/white"
+                android:textSize="@dimen/_5sdp"
+                app:layout_constraintBottom_toBottomOf="@+id/inv_del_butt"
+                app:layout_constraintEnd_toEndOf="@+id/inv_del_butt"
+                app:layout_constraintStart_toStartOf="@+id/inv_del_butt"
+                app:layout_constraintTop_toTopOf="@+id/inv_del_butt" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <ImageView
+        android:id="@+id/exitButt"
+        android:layout_width="@dimen/_40sdp"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"
+        android:src="@drawable/invx_exit"
+        app:layout_constraintStart_toEndOf="@+id/myLayout"
+        app:layout_constraintTop_toTopOf="@+id/myLayout" />
+
+    <!-- Additional matrix (store / trade / cabinet) -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/additionalLayout"
+        android:layout_width="@dimen/_152sdp"
+        android:layout_height="@dimen/_180sdp"
+        android:layout_marginStart="@dimen/_5sdp"
+        android:background="@drawable/invx_matrix_bg"
+        app:layout_constraintBottom_toBottomOf="@+id/myLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/myLayout">
+
+        <ImageView
+            android:id="@+id/additionalTopBg"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/_19sdp"
+            android:background="@drawable/invx_bg_top"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/additionalTopCaption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/_6sdp"
+            android:fontFamily="@font/din_pro_bold"
+            android:includeFontPadding="false"
+            android:shadowColor="@color/black"
+            android:shadowRadius="1"
+            android:text="Шкаф"
+            android:textAllCaps="true"
+            android:textColor="@color/white"
+            android:textSize="@dimen/_8sdp"
+            app:layout_constraintBottom_toBottomOf="@+id/additionalTopBg"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/additionalMassText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/_4sdp"
+            android:fontFamily="@font/din_pro_bold"
+            android:includeFontPadding="false"
+            android:shadowColor="#000000"
+            android:shadowRadius="1"
+            android:text="0/50 КГ"
+            android:textColor="#CCCCCC"
+            android:textSize="@dimen/_7sdp"
+            app:layout_constraintBottom_toBottomOf="@+id/additionalTopBg"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/additionalMatrixRecycle"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="@dimen/_3sdp"
+            android:layout_marginTop="@dimen/_3sdp"
+            android:layout_marginBottom="@dimen/_3sdp"
+            android:fadeScrollbars="false"
+            android:scrollbarStyle="outsideInset"
+            android:scrollbarThumbVertical="@drawable/invx_scroll"
+            android:scrollbarTrackVertical="@drawable/invx_scroll_bg"
+            android:scrollbars="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/additionalTopBg" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

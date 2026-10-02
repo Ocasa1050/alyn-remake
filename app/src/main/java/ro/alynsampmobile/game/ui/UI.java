@@ -25,12 +25,13 @@ import ro.alynsampmobile.game.ui.widgets.HeightProvider;
 import ro.alynsampmobile.game.ui.widgets.Keyboard;
 import ro.alynsampmobile.game.ui.widgets.LoadingScreen;
 import ro.alynsampmobile.game.ui.widgets.MenuDialog;
+import ro.alynsampmobile.game.ui.widgets.inventory.InventoryDialog;
 import ro.alynsampmobile.game.ui.widgets.Scoreboard;
 import ro.alynsampmobile.game.ui.widgets.Voice;
 import ro.alynsampmobile.game.ui.widgets.WantedLevel;
 
 @Obfuscate
-public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener, Scoreboard.Listener, Keyboard.Listener, Chat.Listener, HeightProvider.Listener, MenuDialog.Listener {
+public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener, Scoreboard.Listener, Keyboard.Listener, Chat.Listener, HeightProvider.Listener, MenuDialog.Listener, InventoryDialog.Listener {
     private static final String TAG = "UI";
 
     private final SAMP samp;
@@ -38,6 +39,7 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
     private LoadingScreen loadingScreen;
     private ButtonPanel buttonPanel;
     private MenuDialog menuDialog;
+    private InventoryDialog inventoryDialog;
     private Voice voice;
     private Dialog dialog;
     private Keyboard keyboard;
@@ -68,6 +70,7 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         loadingScreen = new LoadingScreen(samp);
         buttonPanel = new ButtonPanel(samp, this);
         menuDialog = new MenuDialog(samp, this);
+        inventoryDialog = new InventoryDialog(samp, this);
         voice = new Voice(samp, this);
         chat = new Chat(samp, this);
         editObject = new EditObject(samp);
@@ -234,10 +237,17 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         _keyboardSend("/menubutton " + id);
     }
 
+    @Override
+    public void _sendInventoryCommand(String cmd) {
+        Log.i(TAG, "**** sendInventoryCommand " + cmd);
+        _keyboardSend(cmd);
+    }
+
     public void onServerData(String data) {
         Log.i(TAG, "**** onServerData " + data);
         samp.runOnUiThread(() -> {
             if ("MENU".equals(data) && menuDialog != null) menuDialog.showMenu(true);
+            else if (data.startsWith("INV|") && inventoryDialog != null) inventoryDialog.onData(data);
         });
     }
 
