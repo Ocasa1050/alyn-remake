@@ -24,18 +24,20 @@ import ro.alynsampmobile.game.ui.widgets.EditObject;
 import ro.alynsampmobile.game.ui.widgets.HeightProvider;
 import ro.alynsampmobile.game.ui.widgets.Keyboard;
 import ro.alynsampmobile.game.ui.widgets.LoadingScreen;
+import ro.alynsampmobile.game.ui.widgets.MenuDialog;
 import ro.alynsampmobile.game.ui.widgets.Scoreboard;
 import ro.alynsampmobile.game.ui.widgets.Voice;
 import ro.alynsampmobile.game.ui.widgets.WantedLevel;
 
 @Obfuscate
-public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener, Scoreboard.Listener, Keyboard.Listener, Chat.Listener, HeightProvider.Listener {
+public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener, Scoreboard.Listener, Keyboard.Listener, Chat.Listener, HeightProvider.Listener, MenuDialog.Listener {
     private static final String TAG = "UI";
 
     private final SAMP samp;
 
     private LoadingScreen loadingScreen;
     private ButtonPanel buttonPanel;
+    private MenuDialog menuDialog;
     private Voice voice;
     private Dialog dialog;
     private Keyboard keyboard;
@@ -65,6 +67,7 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         heightProvider = new HeightProvider(samp).init(samp.GetMainView()).setHeightListener(this);
         loadingScreen = new LoadingScreen(samp);
         buttonPanel = new ButtonPanel(samp, this);
+        menuDialog = new MenuDialog(samp, this);
         voice = new Voice(samp, this);
         chat = new Chat(samp, this);
         editObject = new EditObject(samp);
@@ -128,8 +131,10 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
     }
 
     private void showButtonPanel(boolean z) {
-        // Log.i(TAG, "**** showButtonPanel " + z);
-        samp.runOnUiThread(() -> buttonPanel.show(z));
+        samp.runOnUiThread(() -> {
+            buttonPanel.show(z);
+            if (menuDialog != null) menuDialog.showButton(z);
+        });
     }
 
     private void showVoice(boolean z) {
@@ -218,6 +223,12 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         } catch (UnsatisfiedLinkError e) {
             Log.e(TAG, Objects.requireNonNull(e.getMessage()));
         }
+    }
+
+    @Override
+    public void _sendMenuClick(int id) {
+        Log.i(TAG, "**** sendMenuClick " + id);
+        _keyboardSend("/menubutton " + id);
     }
 
     public void addChatMessage(String message, String nick, String nickColor) {
