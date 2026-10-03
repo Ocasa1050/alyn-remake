@@ -20,6 +20,7 @@ import ro.alynsampmobile.game.ui.widgets.ButtonPanel;
 import ro.alynsampmobile.game.ui.widgets.Chat;
 import ro.alynsampmobile.game.ui.widgets.Copyright;
 import ro.alynsampmobile.game.ui.widgets.Dialog;
+import ro.alynsampmobile.game.ui.widgets.donate.DonateDialog;
 import ro.alynsampmobile.game.ui.widgets.EditObject;
 import ro.alynsampmobile.game.ui.widgets.HeightProvider;
 import ro.alynsampmobile.game.ui.widgets.Keyboard;
@@ -31,7 +32,7 @@ import ro.alynsampmobile.game.ui.widgets.Voice;
 import ro.alynsampmobile.game.ui.widgets.WantedLevel;
 
 @Obfuscate
-public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener, Scoreboard.Listener, Keyboard.Listener, Chat.Listener, HeightProvider.Listener, MenuDialog.Listener, InventoryDialog.Listener {
+public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener, Scoreboard.Listener, Keyboard.Listener, Chat.Listener, HeightProvider.Listener, MenuDialog.Listener, InventoryDialog.Listener, DonateDialog.Listener {
     private static final String TAG = "UI";
 
     private final SAMP samp;
@@ -40,6 +41,7 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
     private ButtonPanel buttonPanel;
     private MenuDialog menuDialog;
     private InventoryDialog inventoryDialog;
+    private DonateDialog donateDialog;
     private Voice voice;
     private Dialog dialog;
     private Keyboard keyboard;
@@ -71,6 +73,7 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         buttonPanel = new ButtonPanel(samp, this);
         menuDialog = new MenuDialog(samp, this);
         inventoryDialog = new InventoryDialog(samp, this);
+        donateDialog = new DonateDialog(samp, this);
         voice = new Voice(samp, this);
         chat = new Chat(samp, this);
         editObject = new EditObject(samp);
@@ -243,11 +246,18 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         _keyboardSend(cmd);
     }
 
+    @Override
+    public void _sendDonateCommand(String cmd) {
+        Log.i(TAG, "**** sendDonateCommand " + cmd);
+        _keyboardSend(cmd);
+    }
+
     public void onServerData(String data) {
         Log.i(TAG, "**** onServerData " + data);
         samp.runOnUiThread(() -> {
             if ("MENU".equals(data) && menuDialog != null) menuDialog.showMenu(true);
             else if (data.startsWith("INV|") && inventoryDialog != null) inventoryDialog.onData(data);
+            else if (data.startsWith("DON|") && donateDialog != null) donateDialog.onData(data);
         });
     }
 
