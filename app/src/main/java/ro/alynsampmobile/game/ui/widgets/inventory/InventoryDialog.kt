@@ -4,8 +4,8 @@ import android.app.Activity
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ro.alynsampmobile.launcher.R
@@ -28,7 +28,7 @@ class InventoryDialog(private val activity: Activity, private val listener: List
         const val MATRIX_MAIN = 2
         const val MATRIX_ADDITIONAL = 3
 
-        const val PLAYER_CELLS = 2 * 6
+        const val PLAYER_CELLS = 8
         const val MAIN_CELLS = 4 * 12
         const val ADDITIONAL_CELLS = 3 * 49
 
@@ -36,28 +36,31 @@ class InventoryDialog(private val activity: Activity, private val listener: List
         const val BUTTON_DELETE = 2
         const val BUTTON_USE = 3
         const val BUTTON_INFO = 4
-        const val BUTTON_MY_SKIN = 5
         const val BUTTON_EXIT = 6
     }
 
     private val root: View = activity.layoutInflater.inflate(R.layout.inventory, null)
 
+    private val playerList = List(PLAYER_CELLS) { InventoryItem() }
+
     private val matrices: List<InventoryAdapter> = listOf(
         InventoryAdapter(MATRIX_NONE, emptyList(), this),
-        InventoryAdapter(MATRIX_PLAYER, List(PLAYER_CELLS) { InventoryItem() }, this),
+        InventoryAdapter(MATRIX_PLAYER, playerList, this, 0, 4),
         InventoryAdapter(MATRIX_MAIN, List(MAIN_CELLS) { InventoryItem() }, this),
         InventoryAdapter(MATRIX_ADDITIONAL, List(ADDITIONAL_CELLS) { InventoryItem() }, this)
     )
+
+    /** second half of the player matrix (the "CHARACTER" panel), shares the same list */
+    private val playerAdapter2 = InventoryAdapter(MATRIX_PLAYER, playerList, this, 4, 4)
 
     private val healthText: TextView = root.findViewById(R.id.healthText)
     private val armourText: TextView = root.findViewById(R.id.armourText)
     private val satietyText: TextView = root.findViewById(R.id.satietyText)
     private val myMassText: TextView = root.findViewById(R.id.myMassText)
+    private val myMassProgress: ProgressBar = root.findViewById(R.id.myMassProgress)
     private val additionalMassText: TextView = root.findViewById(R.id.additionalMassText)
     private val additionalTopCaption: TextView = root.findViewById(R.id.additionalTopCaption)
     private val additionalLayout: View = root.findViewById(R.id.additionalLayout)
-    private val myLayout: View = root.findViewById(R.id.myLayout)
-    private val myButtonsLayout: View = root.findViewById(R.id.myButtonsLayout)
     private val exitButt: View = root.findViewById(R.id.exitButt)
 
     private var selMat = -1
@@ -69,12 +72,15 @@ class InventoryDialog(private val activity: Activity, private val listener: List
             ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         )
         root.visibility = View.GONE
-        myButtonsLayout.visibility = View.GONE
         additionalLayout.visibility = View.GONE
 
         root.findViewById<RecyclerView>(R.id.playerMatrixRecycle).apply {
-            layoutManager = GridLayoutManager(activity, 2)
+            layoutManager = GridLayoutManager(activity, 1)
             adapter = matrices[MATRIX_PLAYER]
+        }
+        root.findViewById<RecyclerView>(R.id.charMatrixRecycle).apply {
+            layoutManager = GridLayoutManager(activity, 1)
+            adapter = playerAdapter2
         }
         root.findViewById<RecyclerView>(R.id.myMatrixRecycle).apply {
             layoutManager = GridLayoutManager(activity, 4)
@@ -89,7 +95,6 @@ class InventoryDialog(private val activity: Activity, private val listener: List
         root.findViewById<View>(R.id.inv_sell_butt).setOnClickListener { sendButton(BUTTON_TRADE) }
         root.findViewById<View>(R.id.inv_use_butt).setOnClickListener { sendButton(BUTTON_USE) }
         root.findViewById<View>(R.id.inv_inf_butt).setOnClickListener { sendButton(BUTTON_INFO) }
-        root.findViewById<View>(R.id.playerMainIcon).setOnClickListener { sendButton(BUTTON_MY_SKIN) }
         exitButt.setOnClickListener { sendButton(BUTTON_EXIT) }
     }
 
@@ -120,6 +125,7 @@ class InventoryDialog(private val activity: Activity, private val listener: List
                     healthText.text = p.getOrElse(3) { "100" }
                     armourText.text = p.getOrElse(4) { "0" }
                     satietyText.text = p.getOrElse(5) { "100" }
+                    showSkin(p.getOrElse(6) { "" }.trim())
                     root.visibility = View.VISIBLE
                 } else {
                     resetSelected()
@@ -130,7 +136,16 @@ class InventoryDialog(private val activity: Activity, private val listener: List
             "MASS" -> {
                 val text = p.getOrElse(3) { "" }
                 when (p[2].trim().toInt()) {
-                    MATRIX_MAIN -> myMassText.text = text
+                    MATRIX_MAIN -> {
+                        myMassText.text = text
+                        val parts = text.split("/")
+                        val used = parts.getOrNull(0)?.filter { it.isDigit() }?.toIntOrNull()
+                        val max = parts.getOrNull(1)?.filter { it.isDigit() }?.toIntOrNull()
+                        if (used != null && max != null && max > 0) {
+                            myMassProgress.max = max
+                            myMassProgress.progress = used
+                        }
+                    }
                     MATRIX_ADDITIONAL -> additionalMassText.text = text
                 }
             }
@@ -160,6 +175,10 @@ class InventoryDialog(private val activity: Activity, private val listener: List
                         item.rare = 0
                     }
                     matrices[m].notifyDataSetChanged()
+                    if (m == MATRIX_PLAYER) {
+                        playerAdapter2.notifyDataSetChanged()
+                        showSkin("")
+                    }
                 }
             }
             else -> Log.w(TAG, "unknown inventory command: $p")
@@ -182,18 +201,38 @@ class InventoryDialog(private val activity: Activity, private val listener: List
             resetSelected()
             setSelected(m, pos)
         }
-        matrix.notifyItemChanged(pos)
+        refresh(m, pos)
+    }
+
+    private fun refresh(m: Int, pos: Int) {
+        if (m == MATRIX_PLAYER) {
+            matrices[m].notifyDataSetChanged()
+            playerAdapter2.notifyDataSetChanged()
+        } else {
+            matrices[m].notifyItemChanged(pos)
+        }
+    }
+
+    private fun showSkin(skin: String) {
+        val item = playerList[0]
+        val ctx = activity
+        var name = "skin_$skin"
+        if (skin.isEmpty() || ctx.resources.getIdentifier(name, "drawable", ctx.packageName) == 0) {
+            name = "invx_player_placeholder"
+        }
+        item.sprite = name
+        matrices[MATRIX_PLAYER].notifyDataSetChanged()
     }
 
     private fun resetSelected() {
         if (selMat in MATRIX_PLAYER..MATRIX_ADDITIONAL && selPos >= 0) {
             val matrix = matrices[selMat]
             matrix.selectedPos = -1
-            matrix.notifyItemChanged(selPos)
+            if (selMat == MATRIX_PLAYER) playerAdapter2.selectedPos = -1
+            refresh(selMat, selPos)
         }
         selMat = -1
         selPos = -1
-        myButtonsLayout.visibility = View.GONE
     }
 
     private fun setSelected(m: Int, pos: Int) {
@@ -202,22 +241,18 @@ class InventoryDialog(private val activity: Activity, private val listener: List
         if (pos < 0 || pos >= matrix.list.size) return
 
         matrix.selectedPos = pos
+        if (m == MATRIX_PLAYER) playerAdapter2.selectedPos = pos
         selMat = m
         selPos = pos
-        matrix.notifyItemChanged(pos)
-        myButtonsLayout.visibility = View.VISIBLE
+        refresh(m, pos)
     }
 
     private fun toggleAdditional(show: Boolean, caption: String) {
-        val lp = exitButt.layoutParams as ConstraintLayout.LayoutParams
         if (show) {
             additionalLayout.visibility = View.VISIBLE
             additionalTopCaption.text = caption
-            lp.startToEnd = additionalLayout.id
         } else {
             additionalLayout.visibility = View.GONE
-            lp.startToEnd = myLayout.id
         }
-        exitButt.layoutParams = lp
     }
 }

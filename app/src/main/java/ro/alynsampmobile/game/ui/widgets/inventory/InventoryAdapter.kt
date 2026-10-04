@@ -16,7 +16,9 @@ interface InventoryListener {
 class InventoryAdapter(
     private val matrixId: Int,
     val list: List<InventoryItem>,
-    private val listener: InventoryListener
+    private val listener: InventoryListener,
+    private val offset: Int = 0,
+    private val count: Int = list.size
 ) : RecyclerView.Adapter<InventoryAdapter.ViewHolder>() {
 
     var selectedPos: Int = -1
@@ -27,13 +29,13 @@ class InventoryAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val item = list[position]
+        val item = list[offset + position]
 
         holder.image.backgroundTintList = ColorStateList.valueOf(Rare.color(item.rare))
         holder.caption.text = item.caption
 
         holder.layout.setBackgroundResource(
-            if (selectedPos == position) R.drawable.invx_bg_shape_active else R.drawable.invx_bg_shape
+            if (selectedPos == offset + position) R.drawable.invb_bg_shape_active else R.drawable.invb_bg_shape
         )
 
         if (item.count.isNotEmpty()) {
@@ -48,7 +50,7 @@ class InventoryAdapter(
         holder.image.setImageResource(resId)
     }
 
-    override fun getItemCount(): Int = list.size
+    override fun getItemCount(): Int = count
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val layout: View = view.findViewById(R.id.itemLayout)
@@ -61,7 +63,7 @@ class InventoryAdapter(
             view.setOnClickListener {
                 val pos = adapterPosition
                 if (pos != RecyclerView.NO_POSITION) {
-                    listener.onSelectedItem(matrixId, pos)
+                    listener.onSelectedItem(matrixId, offset + pos)
                 }
             }
         }
