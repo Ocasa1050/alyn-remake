@@ -20,6 +20,7 @@ import ro.alynsampmobile.game.ui.widgets.ButtonPanel;
 import ro.alynsampmobile.game.ui.widgets.Chat;
 import ro.alynsampmobile.game.ui.widgets.Copyright;
 import ro.alynsampmobile.game.ui.widgets.Dialog;
+import ro.alynsampmobile.game.ui.widgets.battlepass.BattlePassDialog;
 import ro.alynsampmobile.game.ui.widgets.donate.DonateDialog;
 import ro.alynsampmobile.game.ui.widgets.EditObject;
 import ro.alynsampmobile.game.ui.widgets.HeightProvider;
@@ -32,7 +33,7 @@ import ro.alynsampmobile.game.ui.widgets.Voice;
 import ro.alynsampmobile.game.ui.widgets.WantedLevel;
 
 @Obfuscate
-public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener, Scoreboard.Listener, Keyboard.Listener, Chat.Listener, HeightProvider.Listener, MenuDialog.Listener, InventoryDialog.Listener, DonateDialog.Listener {
+public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener, Scoreboard.Listener, Keyboard.Listener, Chat.Listener, HeightProvider.Listener, MenuDialog.Listener, InventoryDialog.Listener, DonateDialog.Listener, BattlePassDialog.Listener {
     private static final String TAG = "UI";
 
     private final SAMP samp;
@@ -42,6 +43,7 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
     private MenuDialog menuDialog;
     private InventoryDialog inventoryDialog;
     private DonateDialog donateDialog;
+    private BattlePassDialog battlePassDialog;
     private Voice voice;
     private Dialog dialog;
     private Keyboard keyboard;
@@ -74,6 +76,7 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         menuDialog = new MenuDialog(samp, this);
         inventoryDialog = new InventoryDialog(samp, this);
         donateDialog = new DonateDialog(samp, this);
+        battlePassDialog = new BattlePassDialog(samp, this);
         voice = new Voice(samp, this);
         chat = new Chat(samp, this);
         editObject = new EditObject(samp);
@@ -141,7 +144,6 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
 
     private void showButtonPanel(boolean z) {
         samp.runOnUiThread(() -> {
-            buttonPanel.show(z);
             if (menuDialog != null) menuDialog.showButton(z);
         });
     }
@@ -252,12 +254,27 @@ public class UI implements ButtonPanel.Listener, Voice.Listener, Dialog.Listener
         _keyboardSend(cmd);
     }
 
+    @Override
+    public void _sendBattlePassCommand(String cmd) {
+        _keyboardSend(cmd);
+    }
+
     public void onServerData(String data) {
+        if (data == null) return;
         Log.i(TAG, "**** onServerData " + data);
         samp.runOnUiThread(() -> {
+            if ((data.startsWith("INV|SHOW|1") || data.startsWith("DON|SHOW|1") || data.startsWith("BP|SHOW|1"))
+                    && menuDialog != null) {
+                menuDialog.showButton(false);
+            } else if ((data.startsWith("INV|SHOW|0") || data.startsWith("DON|SHOW|0") || data.startsWith("BP|SHOW|0"))
+                    && menuDialog != null) {
+                menuDialog.showButton(true);
+            }
+
             if ("MENU".equals(data) && menuDialog != null) menuDialog.showMenu(true);
             else if (data.startsWith("INV|") && inventoryDialog != null) inventoryDialog.onData(data);
             else if (data.startsWith("DON|") && donateDialog != null) donateDialog.onData(data);
+            else if (data.startsWith("BP|") && battlePassDialog != null) battlePassDialog.onData(data);
         });
     }
 

@@ -2,7 +2,7 @@ name: Android Linux Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, last]
   pull_request:
     branches: [main]
   workflow_dispatch:

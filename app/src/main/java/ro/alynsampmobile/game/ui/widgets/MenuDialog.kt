@@ -50,12 +50,13 @@ class MenuDialog(private val activity: Activity, private val listener: Listener)
         menuButton.text = "MENU"
         menuButton.visibility = View.GONE
         menuButton.setOnClickListener { showMenu(true) }
+        // Same place the old key panel (ESC/TAB/.../Y/N) used to occupy: left edge, 35% down the screen.
         val lp = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP or Gravity.END
+            Gravity.TOP or Gravity.START
         )
-        lp.setMargins(0, dp(8), dp(8), 0)
+        lp.setMargins(dp(4), (activity.resources.displayMetrics.heightPixels * 0.35f).toInt(), 0, 0)
         activity.addContentView(menuButton, lp)
     }
 

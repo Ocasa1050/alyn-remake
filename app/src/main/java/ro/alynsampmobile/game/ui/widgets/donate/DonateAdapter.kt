@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 import ro.alynsampmobile.launcher.R
 import java.text.NumberFormat
@@ -19,6 +20,9 @@ interface DonateListener {
     fun onUse(item: DonateItem)
     fun onSell(item: DonateItem)
 }
+
+/** Folder (public, https) where product pictures are uploaded. Must end with "/". */
+const val IMAGE_BASE_URL = "https://raw.githubusercontent.com/Ocasa1050/alyn-assets/main/wallet/"
 
 class DonateAdapter(
     private val context: Context,
@@ -38,6 +42,32 @@ class DonateAdapter(
         notifyDataSetChanged()
     }
 
+    /**
+     * 1) a drawable inside the app with that name,
+     * 2) a full http(s) URL,
+     * 3) a file on the image host: IMAGE_BASE_URL + sprite (".png" is added when there is no extension).
+     * Downloaded images are cached on the phone by Glide.
+     */
+    private fun loadImage(view: ImageView, sprite: String) {
+        Glide.with(context).clear(view)
+        if (sprite.isEmpty() || sprite == "none") {
+            view.setImageDrawable(null)
+            return
+        }
+        val resId = context.resources.getIdentifier(sprite, "drawable", context.packageName)
+        if (resId != 0) {
+            view.setImageResource(resId)
+            return
+        }
+        val url = when {
+            sprite.startsWith("http://") || sprite.startsWith("https://") -> sprite
+            sprite.contains('.') -> IMAGE_BASE_URL + sprite
+            else -> "$IMAGE_BASE_URL$sprite.png"
+        }
+        view.setImageDrawable(null)
+        Glide.with(context).load(url).into(view)
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(inflater.inflate(R.layout.donate_cell, parent, false))
     }
@@ -50,9 +80,7 @@ class DonateAdapter(
         holder.priceText.text = if (item.price > 0) priceFormat.format(item.price.toLong()) else "-"
         holder.nameText.text = item.name
 
-        val resId = if (item.sprite.isEmpty() || item.sprite == "none") 0
-        else context.resources.getIdentifier(item.sprite, "drawable", context.packageName)
-        if (resId != 0) holder.image.setImageResource(resId) else holder.image.setImageDrawable(null)
+        loadImage(holder.image, item.sprite)
 
         if (position == selected) {
             if (item.sqlId != 0) {
