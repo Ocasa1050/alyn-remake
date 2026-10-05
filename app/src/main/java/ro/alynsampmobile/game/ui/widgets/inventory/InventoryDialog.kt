@@ -2,17 +2,24 @@ package ro.alynsampmobile.game.ui.widgets.inventory
 
 import android.app.Activity
 import android.util.Log
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ro.alynsampmobile.launcher.R
 
 /**
- * Inventory screen. The server drives it with messages "#UI|INV|<command>|..." (see README).
+ * Inventory screen (Black Russia layout). The server drives it with messages "#UI|INV|<command>|..." (see README).
  * Taps are sent back to the server as chat commands: /invcell <matrix> <pos> and /invbtn <id>.
+ *
+ * Matrix 1 = 8 fixed cells (4 "ACTIVE SLOT" + 4 "CHARACTER"), matrix 2 = 16 fixed cells (my items),
+ * matrix 3 = shop / storage list (extra panel).
  */
 class InventoryDialog(private val activity: Activity, private val listener: Listener) : InventoryListener {
 
@@ -23,13 +30,12 @@ class InventoryDialog(private val activity: Activity, private val listener: List
     private companion object {
         const val TAG = "InventoryDialog"
 
-        const val MATRIX_NONE = 0
         const val MATRIX_PLAYER = 1
         const val MATRIX_MAIN = 2
         const val MATRIX_ADDITIONAL = 3
 
         const val PLAYER_CELLS = 8
-        const val MAIN_CELLS = 4 * 12
+        const val MAIN_CELLS = 16
         const val ADDITIONAL_CELLS = 3 * 49
 
         const val BUTTON_TRADE = 1
@@ -37,31 +43,34 @@ class InventoryDialog(private val activity: Activity, private val listener: List
         const val BUTTON_USE = 3
         const val BUTTON_INFO = 4
         const val BUTTON_EXIT = 6
+
+        val ACTIVE_IDS = intArrayOf(R.id.inv_active_1, R.id.inv_active_2, R.id.inv_active_3, R.id.inv_active_4)
+        val PLAYER_IDS = intArrayOf(R.id.inv_player_1, R.id.inv_player_2, R.id.inv_player_3, R.id.inv_player_4)
+        val MAIN_IDS = intArrayOf(
+            R.id.inv_main_1, R.id.inv_main_2, R.id.inv_main_3, R.id.inv_main_4,
+            R.id.inv_main_5, R.id.inv_main_6, R.id.inv_main_7, R.id.inv_main_8,
+            R.id.inv_main_9, R.id.inv_main_10, R.id.inv_main_11, R.id.inv_main_12,
+            R.id.inv_main_13, R.id.inv_main_14, R.id.inv_main_15, R.id.inv_main_16
+        )
     }
 
     private val root: View = activity.layoutInflater.inflate(R.layout.inventory, null)
 
     private val playerList = List(PLAYER_CELLS) { InventoryItem() }
+    private val mainList = List(MAIN_CELLS) { InventoryItem() }
+    private val additionalAdapter = InventoryAdapter(MATRIX_ADDITIONAL, List(ADDITIONAL_CELLS) { InventoryItem() }, this)
 
-    private val matrices: List<InventoryAdapter> = listOf(
-        InventoryAdapter(MATRIX_NONE, emptyList(), this),
-        InventoryAdapter(MATRIX_PLAYER, playerList, this, 0, 4),
-        InventoryAdapter(MATRIX_MAIN, List(MAIN_CELLS) { InventoryItem() }, this),
-        InventoryAdapter(MATRIX_ADDITIONAL, List(ADDITIONAL_CELLS) { InventoryItem() }, this)
-    )
+    private val playerCells: List<ViewGroup> = (ACTIVE_IDS + PLAYER_IDS).map { root.findViewById<ViewGroup>(it) }
+    private val mainCells: List<ViewGroup> = MAIN_IDS.map { root.findViewById<ViewGroup>(it) }
+    private val captions = HashMap<ViewGroup, TextView>()
 
-    /** second half of the player matrix (the "CHARACTER" panel), shares the same list */
-    private val playerAdapter2 = InventoryAdapter(MATRIX_PLAYER, playerList, this, 4, 4)
-
-    private val healthText: TextView = root.findViewById(R.id.healthText)
-    private val armourText: TextView = root.findViewById(R.id.armourText)
-    private val satietyText: TextView = root.findViewById(R.id.satietyText)
-    private val myMassText: TextView = root.findViewById(R.id.myMassText)
-    private val myMassProgress: ProgressBar = root.findViewById(R.id.myMassProgress)
+    private val healthText: TextView = root.findViewById(R.id.inv_health_text)
+    private val satietyText: TextView = root.findViewById(R.id.inv_satiety_text)
+    private val massText: TextView = root.findViewById(R.id.inv_progress_text)
+    private val massProgress: ProgressBar = root.findViewById(R.id.inv_progress)
     private val additionalMassText: TextView = root.findViewById(R.id.additionalMassText)
     private val additionalTopCaption: TextView = root.findViewById(R.id.additionalTopCaption)
     private val additionalLayout: View = root.findViewById(R.id.additionalLayout)
-    private val exitButt: View = root.findViewById(R.id.exitButt)
 
     private var selMat = -1
     private var selPos = -1
@@ -74,28 +83,98 @@ class InventoryDialog(private val activity: Activity, private val listener: List
         root.visibility = View.GONE
         additionalLayout.visibility = View.GONE
 
-        root.findViewById<RecyclerView>(R.id.playerMatrixRecycle).apply {
-            layoutManager = GridLayoutManager(activity, 1)
-            adapter = matrices[MATRIX_PLAYER]
+        playerCells.forEachIndexed { i, c ->
+            prepareCell(c)
+            c.setOnClickListener { onSelectedItem(MATRIX_PLAYER, i) }
         }
-        root.findViewById<RecyclerView>(R.id.charMatrixRecycle).apply {
-            layoutManager = GridLayoutManager(activity, 1)
-            adapter = playerAdapter2
-        }
-        root.findViewById<RecyclerView>(R.id.myMatrixRecycle).apply {
-            layoutManager = GridLayoutManager(activity, 4)
-            adapter = matrices[MATRIX_MAIN]
+        mainCells.forEachIndexed { i, c ->
+            prepareCell(c)
+            c.setOnClickListener { onSelectedItem(MATRIX_MAIN, i) }
         }
         root.findViewById<RecyclerView>(R.id.additionalMatrixRecycle).apply {
             layoutManager = GridLayoutManager(activity, 3)
-            adapter = matrices[MATRIX_ADDITIONAL]
+            adapter = additionalAdapter
         }
 
         root.findViewById<View>(R.id.inv_del_butt).setOnClickListener { sendButton(BUTTON_DELETE) }
         root.findViewById<View>(R.id.inv_sell_butt).setOnClickListener { sendButton(BUTTON_TRADE) }
         root.findViewById<View>(R.id.inv_use_butt).setOnClickListener { sendButton(BUTTON_USE) }
         root.findViewById<View>(R.id.inv_inf_butt).setOnClickListener { sendButton(BUTTON_INFO) }
-        exitButt.setOnClickListener { sendButton(BUTTON_EXIT) }
+        root.findViewById<View>(R.id.inv_close_butt).setOnClickListener { sendButton(BUTTON_EXIT) }
+
+        refreshPlayer()
+        refreshMain()
+    }
+
+    /** Adds a small caption text to a cell (used only when an item has no picture). */
+    private fun prepareCell(cell: ViewGroup) {
+        val tv = TextView(activity)
+        tv.id = View.generateViewId()
+        tv.setTextColor(0xFFFFFFFF.toInt())
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
+        tv.maxLines = 2
+        tv.gravity = Gravity.CENTER
+        tv.includeFontPadding = false
+        val lp = ConstraintLayout.LayoutParams(ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, ConstraintLayout.LayoutParams.WRAP_CONTENT)
+        lp.topToTop = ConstraintLayout.LayoutParams.PARENT_ID
+        lp.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+        lp.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
+        lp.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+        lp.marginStart = 4
+        lp.marginEnd = 4
+        cell.addView(tv, lp)
+        captions[cell] = tv
+    }
+
+    private fun bindCell(cell: ViewGroup, item: InventoryItem, selected: Boolean) {
+        val image = cell.getChildAt(0) as ImageView
+        val badge = cell.getChildAt(1) as ViewGroup
+        val badgeText = badge.getChildAt(0) as TextView
+
+        val resId = if (item.sprite.isEmpty()) 0 else activity.resources.getIdentifier(item.sprite, "drawable", activity.packageName)
+        if (resId != 0) {
+            image.setImageResource(resId)
+            image.visibility = View.VISIBLE
+        } else {
+            image.setImageDrawable(null)
+            image.visibility = View.INVISIBLE
+        }
+        captions[cell]?.text = if (resId == 0) item.caption else ""
+
+        if (item.count.isNotEmpty()) {
+            badgeText.text = item.count
+            badge.visibility = View.VISIBLE
+        } else {
+            badge.visibility = View.INVISIBLE
+        }
+        cell.setBackgroundResource(if (selected) R.drawable.invb_bg_shape_active else R.drawable.invb_bg_shape)
+    }
+
+    private fun refreshPlayer() {
+        playerCells.forEachIndexed { i, c ->
+            bindCell(c, playerList[i], selMat == MATRIX_PLAYER && selPos == i)
+        }
+    }
+
+    private fun refreshMain() {
+        mainCells.forEachIndexed { i, c ->
+            bindCell(c, mainList[i], selMat == MATRIX_MAIN && selPos == i)
+        }
+    }
+
+    private fun refresh(m: Int) {
+        when (m) {
+            MATRIX_PLAYER -> refreshPlayer()
+            MATRIX_MAIN -> refreshMain()
+            MATRIX_ADDITIONAL -> additionalAdapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun listFor(m: Int): List<InventoryItem>? = when (m) {
+        MATRIX_PLAYER -> playerList
+        MATRIX_MAIN -> mainList
+        MATRIX_ADDITIONAL -> additionalAdapter.list
+        else -> null
     }
 
     private fun sendButton(id: Int) {
@@ -123,7 +202,6 @@ class InventoryDialog(private val activity: Activity, private val listener: List
             "SHOW" -> {
                 if (p[2] == "1") {
                     healthText.text = p.getOrElse(3) { "100" }
-                    armourText.text = p.getOrElse(4) { "0" }
                     satietyText.text = p.getOrElse(5) { "100" }
                     showSkin(p.getOrElse(6) { "" }.trim())
                     root.visibility = View.VISIBLE
@@ -137,13 +215,13 @@ class InventoryDialog(private val activity: Activity, private val listener: List
                 val text = p.getOrElse(3) { "" }
                 when (p[2].trim().toInt()) {
                     MATRIX_MAIN -> {
-                        myMassText.text = text
+                        massText.text = text
                         val parts = text.split("/")
                         val used = parts.getOrNull(0)?.filter { it.isDigit() }?.toIntOrNull()
                         val max = parts.getOrNull(1)?.filter { it.isDigit() }?.toIntOrNull()
                         if (used != null && max != null && max > 0) {
-                            myMassProgress.max = max
-                            myMassProgress.progress = used
+                            massProgress.max = max
+                            massProgress.progress = used
                         }
                     }
                     MATRIX_ADDITIONAL -> additionalMassText.text = text
@@ -166,31 +244,35 @@ class InventoryDialog(private val activity: Activity, private val listener: List
             }
             "CLEAR" -> {
                 val m = p[2].trim().toInt()
-                if (m in MATRIX_PLAYER..MATRIX_ADDITIONAL) {
-                    if (selMat == m) resetSelected()
-                    for (item in matrices[m].list) {
-                        item.sprite = ""
-                        item.caption = ""
-                        item.count = ""
-                        item.rare = 0
-                    }
-                    matrices[m].notifyDataSetChanged()
-                    if (m == MATRIX_PLAYER) {
-                        playerAdapter2.notifyDataSetChanged()
-                        showSkin("")
-                    }
+                val list = listFor(m) ?: return
+                if (selMat == m) resetSelected()
+                for (item in list) {
+                    item.sprite = ""
+                    item.caption = ""
+                    item.count = ""
+                    item.rare = 0
                 }
+                if (m == MATRIX_PLAYER) showSkin("")
+                refresh(m)
             }
             else -> Log.w(TAG, "unknown inventory command: $p")
         }
     }
 
-    private fun updateItem(m: Int, pos: Int, sprite: String, caption: String, count: String, rare: Int, active: Boolean) {
-        if (m !in MATRIX_PLAYER..MATRIX_ADDITIONAL) return
-        val matrix = matrices[m]
-        if (pos < 0 || pos >= matrix.list.size) return
+    private fun showSkin(skin: String) {
+        var name = "skin_$skin"
+        if (skin.isEmpty() || activity.resources.getIdentifier(name, "drawable", activity.packageName) == 0) {
+            name = "invx_player_placeholder"
+        }
+        playerList[0].sprite = name
+        refreshPlayer()
+    }
 
-        val item = matrix.list[pos]
+    private fun updateItem(m: Int, pos: Int, sprite: String, caption: String, count: String, rare: Int, active: Boolean) {
+        val list = listFor(m) ?: return
+        if (pos < 0 || pos >= list.size) return
+
+        val item = list[pos]
         item.sprite = sprite
         item.caption = caption
         item.count = count
@@ -201,50 +283,33 @@ class InventoryDialog(private val activity: Activity, private val listener: List
             resetSelected()
             setSelected(m, pos)
         }
-        refresh(m, pos)
-    }
-
-    private fun refresh(m: Int, pos: Int) {
-        if (m == MATRIX_PLAYER) {
-            matrices[m].notifyDataSetChanged()
-            playerAdapter2.notifyDataSetChanged()
-        } else {
-            matrices[m].notifyItemChanged(pos)
-        }
-    }
-
-    private fun showSkin(skin: String) {
-        val item = playerList[0]
-        val ctx = activity
-        var name = "skin_$skin"
-        if (skin.isEmpty() || ctx.resources.getIdentifier(name, "drawable", ctx.packageName) == 0) {
-            name = "invx_player_placeholder"
-        }
-        item.sprite = name
-        matrices[MATRIX_PLAYER].notifyDataSetChanged()
+        if (m == MATRIX_ADDITIONAL) additionalAdapter.notifyItemChanged(pos) else refresh(m)
     }
 
     private fun resetSelected() {
-        if (selMat in MATRIX_PLAYER..MATRIX_ADDITIONAL && selPos >= 0) {
-            val matrix = matrices[selMat]
-            matrix.selectedPos = -1
-            if (selMat == MATRIX_PLAYER) playerAdapter2.selectedPos = -1
-            refresh(selMat, selPos)
-        }
+        val m = selMat
+        val pos = selPos
         selMat = -1
         selPos = -1
+        if (m == MATRIX_ADDITIONAL) {
+            additionalAdapter.selectedPos = -1
+            if (pos >= 0) additionalAdapter.notifyItemChanged(pos)
+        } else if (m in MATRIX_PLAYER..MATRIX_MAIN) {
+            refresh(m)
+        }
     }
 
     private fun setSelected(m: Int, pos: Int) {
-        if (m !in MATRIX_PLAYER..MATRIX_ADDITIONAL) return
-        val matrix = matrices[m]
-        if (pos < 0 || pos >= matrix.list.size) return
-
-        matrix.selectedPos = pos
-        if (m == MATRIX_PLAYER) playerAdapter2.selectedPos = pos
+        val list = listFor(m) ?: return
+        if (pos < 0 || pos >= list.size) return
         selMat = m
         selPos = pos
-        refresh(m, pos)
+        if (m == MATRIX_ADDITIONAL) {
+            additionalAdapter.selectedPos = pos
+            additionalAdapter.notifyItemChanged(pos)
+        } else {
+            refresh(m)
+        }
     }
 
     private fun toggleAdditional(show: Boolean, caption: String) {
